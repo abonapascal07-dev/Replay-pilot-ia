@@ -79,42 +79,5 @@ Customer message: ${message}`;
         history: [
           {
             role: "user",
-            parts: [{ text: prompt }]
-          }
-        ]
-      })
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || "AI request failed.");
-    }
-
-    document.getElementById("result").textContent = data.reply;
-    document.getElementById("output").hidden = false;
-    status.textContent = "Reply generated successfully!";
-  } catch (error) {
-    status.textContent = "Error: " + error.message;
-  } finally {
-    button.disabled = false;
-    button.textContent = "Generate Reply";
-  }
-}
-
-function copyReply() {
-  const reply = document.getElementById("result").textContent;
-
-  navigator.clipboard.writeText(reply)
-    .then(() => {
-      document.getElementById("status").textContent = "Reply copied!";
-    })
-    .catch(() => {
-      document.getElementById("status").textContent =
-        "Please select and copy the reply manually.";
-    });
-}
-</script>
-
-</body>
-</html>
+            parts: [{ text: pr
+                     

@@ -1,83 +1,179 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ReplyPilot AI</title>
-<style>
-*{box-sizing:border-box}
-body{margin:0;background:#0b1120;color:#f8fafc;font-family:Arial,sans-serif;padding:24px 16px}
-.container{max-width:650px;margin:35px auto}
-.logo{color:#60a5fa;font-weight:bold;font-size:18px}
-h1{font-size:34px;margin:25px 0 10px}
-p{color:#94a3b8;line-height:1.6}
-.panel{background:#151f32;border:1px solid #29364d;border-radius:16px;padding:20px;margin-top:25px}
-label{display:block;margin:18px 0 8px;font-weight:bold}
-textarea,select{width:100%;padding:14px;border-radius:9px;border:1px solid #334155;background:#0b1120;color:white;font-size:15px}
-textarea{height:140px;resize:vertical}
-button{width:100%;margin-top:20px;padding:15px;background:#2563eb;color:white;border:0;border-radius:9px;font-size:16px;font-weight:bold}
-button:active{opacity:.8}
-#result{white-space:pre-wrap;color:#dbeafe;line-height:1.6}
-footer{text-align:center;color:#64748b;font-size:12px;margin-top:30px}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ReplyPilot AI</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f3f5f9;
+      margin: 0;
+      padding: 20px;
+      color: #172033;
+    }
+    .container {
+      max-width: 600px;
+      margin: 30px auto;
+      background: white;
+      padding: 25px;
+      border-radius: 14px;
+      box-shadow: 0 4px 20px #00000012;
+    }
+    h1 { color: #2457d6; }
+    p { color: #667085; }
+    label {
+      display: block;
+      margin-top: 18px;
+      font-weight: bold;
+    }
+    input, textarea, select {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 13px;
+      margin-top: 8px;
+      border: 1px solid #ccd2df;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+    textarea { min-height: 110px; resize: vertical; }
+    button {
+      width: 100%;
+      padding: 14px;
+      margin-top: 18px;
+      border: 0;
+      border-radius: 8px;
+      background: #2457d6;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:disabled { opacity: .6; }
+    #copyButton { background: #16834a; }
+    #status { margin-top: 15px; font-weight: bold; }
+    #output {
+      white-space: pre-wrap;
+      background: #f3f5f9;
+      padding: 15px;
+      border-radius: 8px;
+      min-height: 50px;
+      margin-top: 12px;
+    }
+  </style>
 </head>
 <body>
-<div class="container">
-<div class="logo">✦ ReplyPilot AI</div>
-<h1>Reply to customers smarter.</h1>
-<p>Your customer communication assistant. Create clear, professional replies in seconds.</p>
+  <main class="container">
+    <h1>ReplyPilot AI</h1>
+    <p>Your smart customer support assistant.</p>
 
-<div class="panel">
-<label for="message">Customer message</label>
-<textarea id="message" placeholder="Paste your customer's message here..."></textarea>
+    <h3>Business Profile</h3>
 
-<label for="tone">Choose your reply tone</label>
-<select id="tone">
-<option>Professional</option>
-<option>Friendly</option>
-<option>Formal</option>
-</select>
+    <label for="businessName">Business name</label>
+    <input id="businessName" placeholder="Example: Pascal Shoes">
 
-<button onclick="generateReply()">Generate Reply</button>
+    <label for="businessType">Business type</label>
+    <input id="businessType" placeholder="Example: Online shoe store">
 
-<div id="output" hidden>
-<label>Your suggested reply</label>
-<p id="result"></p>
-<button onclick="copyReply()">Copy Reply</button>
-</div>
-<p id="status" aria-live="polite"></p>
-</div>
-<footer>ReplyPilot AI © 2026</footer>
-</div>
+    <label for="message">Customer message</label>
+    <textarea id="message" placeholder="Paste the customer's message here..."></textarea>
 
+    <label for="tone">Reply tone</label>
+    <select id="tone">
+      <option value="Professional">Professional</option>
+      <option value="Friendly">Friendly</option>
+      <option value="Formal">Formal</option>
+    </select>
 
-<script>
-async function generateReply() {
-  const message = document.getElementById("message").value.trim();
-  const tone = document.getElementById("tone").value;
-  const status = document.getElementById("status");
-  const button = document.querySelector('button[onclick="generateReply()"]');
+    <button id="generateButton" onclick="generateReply()">
+      Generate Reply
+    </button>
 
-  if (!message) {
-    status.textContent = "Please paste a customer message first.";
-    return;
-  }
+    <p id="status"></p>
+    <div id="output">Your AI reply will appear here.</div>
 
-  button.disabled = true;
-  button.textContent = "Generating...";
-  status.textContent = "Gemini is preparing your reply...";
+    <button id="copyButton" onclick="copyReply()">
+      Copy Reply
+    </button>
+  </main>
 
-  try {
-    const prompt = `Write a helpful customer service reply in English.
-Tone: ${tone}.
-Customer message: ${message}`;
+  <script>
+    async function generateReply() {
+      const businessName = document.getElementById("businessName").value.trim();
+      const businessType = document.getElementById("businessType").value.trim();
+      const message = document.getElementById("message").value.trim();
+      const tone = document.getElementById("tone").value;
+      const status = document.getElementById("status");
+      const output = document.getElementById("output");
+      const button = document.getElementById("generateButton");
 
-    const response = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        history: [
-          {
-            role: "user",
-            parts: [{ text: pr
-                     
+      if (!message) {
+        status.textContent = "Please enter a customer message.";
+        return;
+      }
+
+      const prompt = `
+Business name: ${businessName || "Not provided"}
+Business type: ${businessType || "Not provided"}
+Preferred tone: ${tone}
+
+Write a helpful customer support reply in English.
+Do not invent prices, stock availability, or delivery details.
+
+Customer message:
+${message}
+`;
+
+      button.disabled = true;
+      status.textContent = "Generating your reply...";
+      output.textContent = "";
+
+      try {
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            history: [
+              {
+                role: "user",
+                parts: [{ text: prompt }]
+              }
+            ]
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Something went wrong.");
+        }
+
+        output.textContent = data.reply;
+        status.textContent = "Reply generated successfully!";
+      } catch (error) {
+        status.textContent = "Error: " + error.message;
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    async function copyReply() {
+      const reply = document.getElementById("output").textContent;
+
+      if (!reply || reply === "Your AI reply will appear here.") {
+        document.getElementById("status").textContent = "Generate a reply first.";
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(reply);
+        document.getElementById("status").textContent = "Reply copied successfully!";
+      } catch (error) {
+        document.getElementById("status").textContent = "Copy failed. Please select and copy the reply.";
+      }
+    }
+  </script>
+</body>
+</html>

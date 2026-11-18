@@ -321,5 +321,123 @@ async function copyReply() {
   }
 }
 </script>
+  
+<div id="authBox" style="max-width:420px;margin:30px auto;padding:25px;background:white;border-radius:15px;box-shadow:0 4px 20px #ddd;font-family:Arial">
+  <h2>Welcome to ReplyPilot AI</h2>
+  <p>Create your account or sign in.</p>
+  <input id="authEmail" type="email" placeholder="Email address" style="width:100%;padding:12px;margin:8px 0;box-sizing:border-box">
+  <input id="authPassword" type="password" placeholder="Password (at least 6 characters)" style="width:100%;padding:12px;margin:8px 0;box-sizing:border-box">
+  <button id="signUpBtn" style="width:100%;padding:13px;margin-top:10px;background:#4568f5;color:white;border:0;border-radius:8px">Create account</button>
+  <button id="signInBtn" style="width:100%;padding:13px;margin-top:10px;background:#101a35;color:white;border:0;border-radius:8px">Sign in</button>
+  <p id="authStatus"></p>
+  <button id="signOutBtn" style="display:none;padding:10px">Sign out</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const supabaseClient = supabase.createClient(
+  "https://zsrkyikjyrfxbdkipnhu.supabase.co",
+  "COLLE_ICI_TA_CLE_SB_PUBLISHABLE"
+);
+
+const authBox = document.getElementById("authBox");
+const appMain = document.querySelector("main");
+const appFooter = document.querySelector("footer");
+const statusBox = document.getElementById("authStatus");
+
+function showApp(user) {
+  authBox.style.display = user ? "none" : "block";
+  appMain.style.display = user ? "block" : "none";
+  if (appFooter) appFooter.style.display = user ? "block" : "none";
+  document.getElementById("signOutBtn").style.display = user ? "block" : "none";
+}
+
+showApp(null);
+
+document.getElementById("signUpBtn").onclick = async () => {
+  const email = document.getElementById("authEmail").value.trim();
+  const password = document.getElementById("authPassword").value;
+  const { error } = await supabaseClient.auth.signUp({ email, password });
+  statusBox.textContent = error ? error.message : "Account created. Check your email to verify it.";
+};
+
+document.getElementById("signInBtn").onclick = async () => {
+  const email = document.getElementById("authEmail").value.trim();
+  const password = document.getElementById("authPassword").value;
+  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  statusBox.textContent = error ? error.message : "Welcome!";
+  if (data.user) showApp(data.user);
+};
+
+document.getElementById("signOutBtn").onclick = async () => {
+  await supabaseClient.auth.signOut();
+  showApp(null);
+  statusBox.textContent = "You have signed out.";
+};
+
+supabaseClient.auth.getSession().then(({ data }) => {
+  showApp(data.session?.user || null);
+});
+</script>
+  
+<div id="authBox" style="max-width:420px;margin:30px auto;padding:25px;background:white;border-radius:15px;box-shadow:0 4px 20px #ddd;font-family:Arial">
+  <h2>Welcome to ReplyPilot AI</h2>
+  <p>Create your account or sign in.</p>
+  <input id="authEmail" type="email" placeholder="Email address" style="width:100%;padding:12px;margin:8px 0;box-sizing:border-box">
+  <input id="authPassword" type="password" placeholder="Password (at least 6 characters)" style="width:100%;padding:12px;margin:8px 0;box-sizing:border-box">
+  <button id="signUpBtn" style="width:100%;padding:13px;margin-top:10px;background:#4568f5;color:white;border:0;border-radius:8px">Create account</button>
+  <button id="signInBtn" style="width:100%;padding:13px;margin-top:10px;background:#101a35;color:white;border:0;border-radius:8px">Sign in</button>
+  <p id="authStatus"></p>
+  <button id="signOutBtn" style="display:none;padding:10px">Sign out</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const supabaseClient = supabase.createClient(
+  "https://zsrkyikjyrfxbdkipnhu.supabase.co",
+  "COLLE_ICI_TA_CLE_SB_PUBLISHABLE"
+);
+
+const authBox = document.getElementById("authBox");
+const appMain = document.querySelector("main");
+const appFooter = document.querySelector("footer");
+const statusBox = document.getElementById("authStatus");
+
+function showApp(user) {
+  authBox.style.display = user ? "none" : "block";
+  appMain.style.display = user ? "block" : "none";
+  if (appFooter) appFooter.style.display = user ? "block" : "none";
+  document.getElementById("signOutBtn").style.display = user ? "block" : "none";
+}
+
+showApp(null);
+
+document.getElementById("signUpBtn").onclick = async () => {
+  const email = document.getElementById("authEmail").value.trim();
+  const password = document.getElementById("authPassword").value;
+  const { error } = await supabaseClient.auth.signUp({ email, password });
+  statusBox.textContent = error ? error.message : "Account created. Check your email to verify it.";
+};
+
+document.getElementById("signInBtn").onclick = async () => {
+  const email = document.getElementById("authEmail").value.trim();
+  const password = document.getElementById("authPassword").value;
+  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  statusBox.textContent = error ? error.message : "Welcome!";
+  if (data.user) showApp(data.user);
+};
+
+document.getElementById("signOutBtn").onclick = async () => {
+  await supabaseClient.auth.signOut();
+  showApp(null);
+  statusBox.textContent = "You have signed out.";
+};
+
+supabaseClient.auth.getSession().then(({ data }) => {
+  showApp(data.session?.user || null);
+});
+</script>
+
+  
 </body>
 </html>

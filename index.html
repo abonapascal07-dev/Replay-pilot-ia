@@ -50,32 +50,71 @@ footer{text-align:center;color:#64748b;font-size:12px;margin-top:30px}
 <footer>ReplyPilot AI © 2026</footer>
 </div>
 
+
 <script>
-function generateReply(){
-const message=document.getElementById("message").value.trim();
-const tone=document.getElementById("tone").value;
-const status=document.getElementById("status");
-if(!message){
-status.textContent="Please paste a customer message first.";
-return;
+async function generateReply() {
+  const message = document.getElementById("message").value.trim();
+  const tone = document.getElementById("tone").value;
+  const status = document.getElementById("status");
+  const button = document.querySelector('button[onclick="generateReply()"]');
+
+  if (!message) {
+    status.textContent = "Please paste a customer message first.";
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = "Generating...";
+  status.textContent = "Gemini is preparing your reply...";
+
+  try {
+    const prompt = `Write a helpful customer service reply in English.
+Tone: ${tone}.
+Customer message: ${message}`;
+
+    const response = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        history: [
+          {
+            role: "user",
+            parts: [{ text: prompt }]
+          }
+        ]
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "AI request failed.");
+    }
+
+    document.getElementById("result").textContent = data.reply;
+    document.getElementById("output").hidden = false;
+    status.textContent = "Reply generated successfully!";
+  } catch (error) {
+    status.textContent = "Error: " + error.message;
+  } finally {
+    button.disabled = false;
+    button.textContent = "Generate Reply";
+  }
 }
-let opening="Hello! Thank you for contacting us.";
-if(tone==="Friendly") opening="Hi there! Thanks for reaching out.";
-if(tone==="Formal") opening="Dear Customer, thank you for your message.";
-const reply=opening+" We have received your inquiry and would be happy to help. Could you please share a little more information so we can assist you better? We look forward to hearing from you.";
-document.getElementById("result").textContent=reply;
-document.getElementById("output").hidden=false;
-status.textContent="Demo suggestion created. AI connection is coming next.";
-}
-function copyReply(){
-const reply=document.getElementById("result").textContent;
-if(navigator.clipboard){
-navigator.clipboard.writeText(reply);
-document.getElementById("status").textContent="Reply copied!";
-}else{
-document.getElementById("status").textContent="Please select and copy the reply.";
-}
+
+function copyReply() {
+  const reply = document.getElementById("result").textContent;
+
+  navigator.clipboard.writeText(reply)
+    .then(() => {
+      document.getElementById("status").textContent = "Reply copied!";
+    })
+    .catch(() => {
+      document.getElementById("status").textContent =
+        "Please select and copy the reply manually.";
+    });
 }
 </script>
+
 </body>
 </html>

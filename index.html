@@ -111,8 +111,7 @@
         status.textContent = "Please enter a customer message.";
         return;
       }
-
-      const prompt = `
+const prompt = `
 Business name: ${businessName || "Not provided"}
 Business type: ${businessType || "Not provided"}
 Preferred tone: ${tone}
@@ -123,6 +122,7 @@ Do not invent prices, stock availability, or delivery details.
 Customer message:
 ${message}
 `;
+      
 
       button.disabled = true;
       status.textContent = "Generating your reply...";

@@ -71,27 +71,116 @@
 
   <script>
     function openApp() {
+      document.getElementById('
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ReplyPilot AI</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #101827;
+      color: white;
+      text-align: center;
+      padding: 40px 20px;
+      margin: 0;
+    }
+    h1 { color: #60a5fa; }
+    p { color: #d1d5db; }
+    button {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 14px 24px;
+      font-size: 16px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    button:hover { background: #1d4ed8; }
+    #app-box {
+      display: none;
+      max-width: 500px;
+      margin: 30px auto;
+      background: #1f2937;
+      padding: 20px;
+      border-radius: 12px;
+      text-align: left;
+    }
+    textarea {
+      width: 100%;
+      height: 100px;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #374151;
+      background: #111827;
+      color: white;
+      box-sizing: border-box;
+      margin-bottom: 12px;
+      font-size: 14px;
+    }
+    #app-box > button { width: 100%; }
+    #reply-box {
+      margin-top: 16px;
+      padding: 12px;
+      background: #111827;
+      border-radius: 8px;
+      white-space: pre-wrap;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <h1>ReplyPilot AI</h1>
+  <p>Your AI-powered customer response assistant.</p>
+  <button id="start-btn" onclick="openApp()">Get Started</button>
+
+  <div id="app-box">
+    <label for="customer-msg"><strong>Message du client :</strong></label><br><br>
+    <textarea id="customer-msg" placeholder="Collez ici le message du client..."></textarea>
+    <button onclick="generateReply()">Générer une réponse IA</button>
+    <div id="reply-box">La réponse générée apparaîtra ici...</div>
+  </div>
+
+  <script>
+    function openApp() {
       document.getElementById('start-btn').style.display = 'none';
       document.getElementById('app-box').style.display = 'block';
     }
 
+    let history = [];
+
     async function generateReply() {
       const msg = document.getElementById('customer-msg').value.trim();
       const replyBox = document.getElementById('reply-box');
+
       if (!msg) {
         replyBox.textContent = "Veuillez entrer un message d'abord.";
         return;
       }
+
       replyBox.textContent = "Génération de la réponse en cours...";
+      history.push({ role: "user", parts: [{ text: msg }] });
+
       try {
         const res = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: "Rédige une réponse professionnelle et polie à ce message client : " + msg })
+          body: JSON.stringify({ history })
         });
         const data = await res.json();
-        replyBox.textContent = data.reply || data.error || "Erreur inconnue.";
+
+        if (data.reply) {
+          history.push({ role: "model", parts: [{ text: data.reply }] });
+          replyBox.textContent = data.reply;
+        } else {
+          history.pop();
+          replyBox.textContent = data.error || "Erreur inconnue.";
+        }
       } catch (e) {
+        history.pop();
         replyBox.textContent = "Erreur de connexion au serveur.";
       }
     }

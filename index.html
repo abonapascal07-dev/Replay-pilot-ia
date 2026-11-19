@@ -161,7 +161,7 @@ const tone=document.getElementById("tone");
 const statusBox=document.getElementById("status");
 const output=document.getElementById("output");
 const generateButton=document.getElementById("generateButton");
-  
+const conversationHistory = [];  
 async function loadBusinessProfile() {
   const { data: { user } } = await supabaseClient.auth.getUser();
   if (!user) return;

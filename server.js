@@ -49,7 +49,46 @@ async function requireAuth(req, res, next) {
     return res.status(500).json({ error: "Authentication failed." });
   }
 }
+async function requireSubscription(req, res, next) {
+  try {
+    const response = await fetch(
+      `${process.env.SUPABASE_URL}/rest/v1/subscriptions?user_id=eq.${encodeURIComponent(req.user.id)}&select=status,current_period_end&limit=1`,
+      {
+        headers: {
+          apikey: process.env.SUPABASE_ANON_KEY,
+          Authorization: req.headers.authorization
+        }
+      }
+    );
 
+    if (!response.ok) {
+      return res.status(503).json({
+        error: "Subscription verification unavailable."
+      });
+    }
+
+    const subscriptions = await response.json();
+    const subscription = subscriptions[0];
+
+    const valid =
+      subscription?.status === "active" &&
+      subscription.current_period_end &&
+      new Date(subscription.current_period_end) > new Date();
+
+    if (!valid) {
+      return res.status(403).json({
+        error: "An active subscription is required."
+      });
+    }
+
+    next();
+  } catch (error) {
+    console.error("Subscription check failed:", error);
+    res.status(503).json({
+      error: "Subscription verification unavailable."
+    });
+  }
+}
 app.post("/api/chat", requireAuth, requireSubscription, async (req, res) => {
   try {
     if (!process.env.OPENAI_API_KEY) {

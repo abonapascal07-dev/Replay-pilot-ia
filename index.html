@@ -3,441 +3,219 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ReplyPilot AI | Smart Customer Support</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ReplyPilot AI</title>
 <style>
-:root {
-  --navy: #101a35;
-  --blue: #4568f5;
-  --light: #f4f6fc;
-  --text: #202b45;
-  --muted: #78839b;
-  --border: #e5e9f2;
-}
-* { box-sizing: border-box; }
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background: var(--light);
-  color: var(--text);
-}
-header {
-  background: var(--navy);
-  color: white;
-  padding: 22px 7%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.logo {
-  font-size: 23px;
-  font-weight: 800;
-  letter-spacing: -.5px;
-}
-.logo span { color: #83a0ff; }
-.header-tag {
-  color: #c6d0e8;
-  font-size: 13px;
-}
-main {
-  max-width: 1050px;
-  margin: 45px auto;
-  padding: 0 18px;
-}
-.intro { margin-bottom: 28px; }
-.intro h1 {
-  font-size: 30px;
-  margin: 0 0 9px;
-}
-.intro p {
-  color: var(--muted);
-  margin: 0;
-  line-height: 1.5;
-}
-.layout {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 22px;
-}
-.card {
-  background: white;
-  border: 1px solid var(--border);
-  border-radius: 17px;
-  padding: 25px;
-  box-shadow: 0 8px 28px rgba(20,35,75,.05);
-}
-.card h2 {
-  font-size: 18px;
-  margin: 0 0 7px;
-}
-.description {
-  color: var(--muted);
-  font-size: 13px;
-  margin: 0 0 23px;
-}
-label {
-  display: block;
-  font-size: 13px;
-  font-weight: 700;
-  margin: 17px 0 8px;
-}
-input, textarea, select {
-  width: 100%;
-  border: 1px solid var(--border);
-  background: #fbfcff;
-  border-radius: 9px;
-  padding: 13px;
-  font-size: 14px;
-  color: var(--text);
-  outline: none;
-}
-input:focus, textarea:focus, select:focus {
-  border-color: var(--blue);
-  box-shadow: 0 0 0 3px rgba(69,104,245,.1);
-}
-textarea {
-  min-height: 145px;
-  resize: vertical;
-  line-height: 1.5;
-}
-button {
-  border: 0;
-  border-radius: 9px;
-  padding: 14px 18px;
-  font-weight: 700;
-  font-size: 14px;
-  cursor: pointer;
-}
-.generate {
-  width: 100%;
-  margin-top: 22px;
-  color: white;
-  background: var(--blue);
-}
-.generate:disabled {
-  opacity: .6;
-  cursor: wait;
-}
-.generate:hover { background: #3455df; }
-.output {
-  min-height: 190px;
-  padding: 17px;
-  background: #f7f8fc;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  white-space: pre-wrap;
-  line-height: 1.6;
-  font-size: 14px;
-  overflow-wrap: anywhere;
-}
-.copy {
-  width: 100%;
-  margin-top: 13px;
-  color: #285b43;
-  background: #e7f6ed;
-}
-.copy:hover { background: #d8f0e2; }
-.status {
-  font-size: 13px;
-  min-height: 20px;
-  margin-top: 12px;
-  color: var(--muted);
-}
-footer {
-  text-align: center;
-  padding: 25px;
-  color: var(--muted);
-  font-size: 12px;
-}
-@media(max-width: 720px) {
-  header { padding: 19px 5%; }
-  .header-tag { font-size: 11px; }
-  main { margin: 30px auto; }
-  .layout { grid-template-columns: 1fr; }
-  .intro h1 { font-size: 25px; }
-  .card { padding: 20px; }
-}
+:root{--navy:#101a35;--blue:#4568f5;--bg:#f4f6fc;--text:#202b45;--muted:#78839b;--line:#e5e9f2}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
+header{background:var(--navy);color:white;padding:18px 6%;display:flex;justify-content:space-between;align-items:center}
+.logo{font-size:21px;font-weight:800}
+.logo span{color:#83a0ff}
+.tag{font-size:11px;color:#c6d0e8}
+main{max-width:980px;margin:32px auto;padding:0 16px}
+.card{background:white;border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:0 8px 28px #14234b0d;margin-bottom:18px}
+h1{font-size:27px;margin:0 0 8px}
+h2{font-size:18px;margin:0 0 8px}
+.desc{font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 18px}
+label{display:block;font-size:13px;font-weight:bold;margin:15px 0 7px}
+input,textarea,select{width:100%;padding:13px;border:1px solid var(--line);border-radius:9px;background:#fbfcff;font-size:15px;color:var(--text)}
+textarea{min-height:130px;resize:vertical;line-height:1.5}
+button{border:0;border-radius:9px;padding:13px 16px;font-size:14px;font-weight:bold;cursor:pointer}
+.primary{background:var(--blue);color:white;width:100%;margin-top:15px}
+.dark{background:var(--navy);color:white;width:100%;margin-top:9px}
+.light{background:#e7f6ed;color:#285b43;width:100%;margin-top:10px}
+button:disabled{opacity:.6}
+#app{display:none}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.output{min-height:190px;padding:16px;border:1px solid var(--line);border-radius:10px;background:#f7f8fc;white-space:pre-wrap;line-height:1.6;overflow-wrap:anywhere;font-size:14px}
+.status{min-height:20px;margin-top:12px;font-size:13px;color:var(--muted);line-height:1.4}
+.auth{max-width:430px;margin:42px auto}
+footer{text-align:center;color:var(--muted);font-size:12px;padding:25px}
+@media(max-width:700px){header{padding:17px 5%}.grid{grid-template-columns:1fr}main{margin:24px auto}h1{font-size:24px}.card{padding:19px}}
 </style>
 </head>
 <body>
-
 <header>
-  <div class="logo">ReplyPilot <span>AI.</span></div>
-  <div class="header-tag">SMART CUSTOMER SUPPORT</div>
+<div class="logo">ReplyPilot <span>AI.</span></div>
+<div class="tag">SMART CUSTOMER SUPPORT</div>
 </header>
 
-<main>
-  <section class="intro">
-    <h1>Your AI Support Assistant</h1>
-    <p>Create professional customer replies in seconds. Save time and serve your customers better.</p>
-  </section>
+<section id="authBox" class="card auth">
+<h2>Welcome to ReplyPilot AI</h2>
+<p class="desc">Create your account or sign in to continue.</p>
+<label for="authEmail">Email address</label>
+<input id="authEmail" type="email" autocomplete="email" placeholder="you@example.com">
+<label for="authPassword">Password</label>
+<input id="authPassword" type="password" autocomplete="current-password" minlength="6" placeholder="At least 6 characters">
+<button class="primary" id="signUpBtn" type="button">Create account</button>
+<button class="dark" id="signInBtn" type="button">Sign in</button>
+<div class="status" id="authStatus" aria-live="polite"></div>
+</section>
 
-  <div class="layout">
-    <section class="card">
-      <h2>Business Profile</h2>
-      <p class="description">Tell ReplyPilot about your business.</p>
+<main id="app">
+<section class="card">
+<h1>Your AI Support Assistant</h1>
+<p class="desc">Create clear, professional customer replies in seconds.</p>
+<div class="grid">
+<div>
+<label for="businessName">Business name</label>
+<input id="businessName" placeholder="Example: Pascal Shoes">
+</div>
+<div>
+<label for="businessType">Business type</label>
+<input id="businessType" placeholder="Example: Online shoe store">
+</div>
+</div>
+<label for="message">Customer message</label>
+<textarea id="message" placeholder="Paste the customer's message here..."></textarea>
+<label for="tone">Reply tone</label>
+<select id="tone">
+<option>Professional</option>
+<option>Friendly</option>
+<option>Formal</option>
+</select>
+<button class="primary" id="generateButton" type="button">Generate Reply</button>
+<div class="status" id="status" aria-live="polite"></div>
+</section>
 
-      <label for="businessName">Business name</label>
-      <input id="businessName" placeholder="Example: Pascal Shoes">
-
-      <label for="businessType">Business type</label>
-      <input id="businessType" placeholder="Example: Online shoe store">
-
-      <h2 style="margin-top:30px">Customer Message</h2>
-      <p class="description">Paste the message you received.</p>
-
-      <textarea id="message" placeholder="Paste the customer's message here..."></textarea>
-
-      <label for="tone">Reply tone</label>
-      <select id="tone">
-        <option value="Professional">Professional</option>
-        <option value="Friendly">Friendly</option>
-        <option value="Formal">Formal</option>
-      </select>
-
-      <button class="generate" id="generateButton" type="button">
-        Generate Reply →
-      </button>
-      <div class="status" id="status" aria-live="polite"></div>
-    </section>
-
-    <section class="card">
-      <h2>AI Generated Reply</h2>
-      <p class="description">Your ready-to-use customer response.</p>
-
-      <div class="output" id="output">Your AI reply will appear here.</div>
-
-      <button class="copy" id="copyButton" type="button">
-        Copy Reply
-      </button>
-    </section>
-  </div>
+<section class="card">
+<h2>AI Generated Reply</h2>
+<p class="desc">Your ready-to-use customer response.</p>
+<div class="output" id="output">Your AI reply will appear here.</div>
+<button class="light" id="copyButton" type="button">Copy Reply</button>
+<button class="dark" id="signOutBtn" type="button">Sign out</button>
+</section>
 </main>
 
-<footer>
-  © 2026 ReplyPilot AI. Smart support, made simple.
-</footer>
+<footer>© 2026 ReplyPilot AI. Smart support, made simple.</footer>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const businessName = document.getElementById("businessName");
-const businessType = document.getElementById("businessType");
-const message = document.getElementById("message");
-const tone = document.getElementById("tone");
-const status = document.getElementById("status");
-const output = document.getElementById("output");
-const generateButton = document.getElementById("generateButton");
-const copyButton = document.getElementById("copyButton");
+const SUPABASE_URL="https://zsrkyikjyrfxbdkipnhu.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY="PASTE_YOUR_SUPABASE_PUBLISHABLE_KEY_HERE";
+const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 
-businessName.value = localStorage.getItem("businessName") || "";
-businessType.value = localStorage.getItem("businessType") || "";
+const authBox=document.getElementById("authBox");
+const app=document.getElementById("app");
+const authStatus=document.getElementById("authStatus");
+const authEmail=document.getElementById("authEmail");
+const authPassword=document.getElementById("authPassword");
 
-businessName.addEventListener("input", () => {
-  localStorage.setItem("businessName", businessName.value);
+function showApp(signedIn){
+authBox.style.display=signedIn?"none":"block";
+app.style.display=signedIn?"block":"none";
+}
+
+document.getElementById("signUpBtn").addEventListener("click",async()=>{
+const email=authEmail.value.trim();
+const password=authPassword.value;
+if(!email||password.length<6){
+authStatus.textContent="Enter a valid email and a password of at least 6 characters.";
+return;
+}
+authStatus.textContent="Creating your account...";
+const {data,error}=await supabaseClient.auth.signUp({email,password});
+if(error)authStatus.textContent=error.message;
+else if(data.session){
+authStatus.textContent="Account created. Welcome!";
+showApp(true);
+}else{
+authStatus.textContent="Account created. Check your email to verify your account, then sign in.";
+}
 });
 
-businessType.addEventListener("input", () => {
-  localStorage.setItem("businessType", businessType.value);
+document.getElementById("signInBtn").addEventListener("click",async()=>{
+const email=authEmail.value.trim();
+const password=authPassword.value;
+if(!email||!password){
+authStatus.textContent="Enter your email and password.";
+return;
+}
+authStatus.textContent="Signing in...";
+const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});
+if(error)authStatus.textContent=error.message;
+else{
+authStatus.textContent="Signed in successfully.";
+showApp(!!data.session);
+}
 });
 
-generateButton.addEventListener("click", generateReply);
-copyButton.addEventListener("click", copyReply);
+document.getElementById("signOutBtn").addEventListener("click",async()=>{
+const {error}=await supabaseClient.auth.signOut();
+if(error)document.getElementById("status").textContent=error.message;
+else showApp(false);
+});
 
-async function generateReply() {
-  const customerMessage = message.value.trim();
+supabaseClient.auth.onAuthStateChange((_event,session)=>showApp(!!session));
+supabaseClient.auth.getSession().then(({data,error})=>{
+if(error)authStatus.textContent=error.message;
+showApp(!!data.session);
+});
 
-  if (!customerMessage) {
-    status.textContent = "Please enter a customer message.";
-    return;
-  }
+const businessName=document.getElementById("businessName");
+const businessType=document.getElementById("businessType");
+const message=document.getElementById("message");
+const tone=document.getElementById("tone");
+const statusBox=document.getElementById("status");
+const output=document.getElementById("output");
+const generateButton=document.getElementById("generateButton");
 
-  const prompt = `
-Business name: ${businessName.value.trim() || "Not provided"}
-Business type: ${businessType.value.trim() || "Not provided"}
+businessName.value=localStorage.getItem("businessName")||"";
+businessType.value=localStorage.getItem("businessType")||"";
+businessName.addEventListener("input",()=>localStorage.setItem("businessName",businessName.value));
+businessType.addEventListener("input",()=>localStorage.setItem("businessType",businessType.value));
+
+generateButton.addEventListener("click",async()=>{
+const customerMessage=message.value.trim();
+if(!customerMessage){
+statusBox.textContent="Please enter a customer message.";
+return;
+}
+const prompt=`Business name: ${businessName.value.trim()||"Not provided"}
+Business type: ${businessType.value.trim()||"Not provided"}
 Preferred tone: ${tone.value}
-
-Write a helpful customer support reply in English.
-Do not invent prices, stock availability, or delivery details.
-Return only the reply to the customer.
+Write a helpful customer support reply in English. Do not invent prices, stock availability, or delivery details. Return only the reply.
 
 Customer message:
-${customerMessage}
-`;
+${customerMessage}`;
 
-  generateButton.disabled = true;
-  generateButton.textContent = "Generating...";
-  status.textContent = "Creating your reply...";
-  output.textContent = "";
-
-  try {
-    const response = await fetch("/api/chat", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        history: [
-          {
-            role: "user",
-            parts: [{ text: prompt }]
-          }
-        ]
-      })
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || "The request failed.");
-    }
-
-    if (!data.reply) {
-      throw new Error("No reply was returned.");
-    }
-
-    output.textContent = data.reply;
-    status.textContent = "Reply generated successfully!";
-
-  } catch (error) {
-    status.textContent = "Error: " + error.message;
-  } finally {
-    generateButton.disabled = false;
-    generateButton.textContent = "Generate Reply →";
-  }
+generateButton.disabled=true;
+generateButton.textContent="Generating...";
+statusBox.textContent="Creating your reply...";
+output.textContent="";
+try{
+const response=await fetch("/api/chat",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({history:[{role:"user",parts:[{text:prompt}]}]})
+});
+const data=await response.json();
+if(!response.ok)throw new Error(data.error||"The request failed.");
+if(!data.reply)throw new Error("No reply was returned.");
+output.textContent=data.reply;
+statusBox.textContent="Reply generated successfully!";
+}catch(error){
+statusBox.textContent="Error: "+error.message;
+}finally{
+generateButton.disabled=false;
+generateButton.textContent="Generate Reply";
 }
+});
 
-async function copyReply() {
-  const reply = output.textContent;
-
-  if (!reply || reply === "Your AI reply will appear here.") {
-    status.textContent = "Generate a reply first.";
-    return;
-  }
-
-  try {
-    await navigator.clipboard.writeText(reply);
-    status.textContent = "Reply copied successfully!";
-  } catch (error) {
-    status.textContent = "Copy failed. Please copy the reply manually.";
-  }
+document.getElementById("copyButton").addEventListener("click",async()=>{
+const reply=output.textContent;
+if(!reply||reply==="Your AI reply will appear here."){
+statusBox.textContent="Generate a reply first.";
+return;
 }
-</script>
-  
-<div id="authBox" style="max-width:420px;margin:30px auto;padding:25px;background:white;border-radius:15px;box-shadow:0 4px 20px #ddd;font-family:Arial">
-  <h2>Welcome to ReplyPilot AI</h2>
-  <p>Create your account or sign in.</p>
-  <input id="authEmail" type="email" placeholder="Email address" style="width:100%;padding:12px;margin:8px 0;box-sizing:border-box">
-  <input id="authPassword" type="password" placeholder="Password (at least 6 characters)" style="width:100%;padding:12px;margin:8px 0;box-sizing:border-box">
-  <button id="signUpBtn" style="width:100%;padding:13px;margin-top:10px;background:#4568f5;color:white;border:0;border-radius:8px">Create account</button>
-  <button id="signInBtn" style="width:100%;padding:13px;margin-top:10px;background:#101a35;color:white;border:0;border-radius:8px">Sign in</button>
-  <p id="authStatus"></p>
-  <button id="signOutBtn" style="display:none;padding:10px">Sign out</button>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-const supabaseClient = supabase.createClient(
-  "https://zsrkyikjyrfxbdkipnhu.supabase.co",
-  "COLLE_ICI_TA_CLE_SB_PUBLISHABLE"
-);
-
-const authBox = document.getElementById("authBox");
-const appMain = document.querySelector("main");
-const appFooter = document.querySelector("footer");
-const statusBox = document.getElementById("authStatus");
-
-function showApp(user) {
-  authBox.style.display = user ? "none" : "block";
-  appMain.style.display = user ? "block" : "none";
-  if (appFooter) appFooter.style.display = user ? "block" : "none";
-  document.getElementById("signOutBtn").style.display = user ? "block" : "none";
+try{
+await navigator.clipboard.writeText(reply);
+statusBox.textContent="Reply copied successfully!";
+}catch{
+statusBox.textContent="Copy failed. Select and copy the reply manually.";
 }
-
-showApp(null);
-
-document.getElementById("signUpBtn").onclick = async () => {
-  const email = document.getElementById("authEmail").value.trim();
-  const password = document.getElementById("authPassword").value;
-  const { error } = await supabaseClient.auth.signUp({ email, password });
-  statusBox.textContent = error ? error.message : "Account created. Check your email to verify it.";
-};
-
-document.getElementById("signInBtn").onclick = async () => {
-  const email = document.getElementById("authEmail").value.trim();
-  const password = document.getElementById("authPassword").value;
-  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-  statusBox.textContent = error ? error.message : "Welcome!";
-  if (data.user) showApp(data.user);
-};
-
-document.getElementById("signOutBtn").onclick = async () => {
-  await supabaseClient.auth.signOut();
-  showApp(null);
-  statusBox.textContent = "You have signed out.";
-};
-
-supabaseClient.auth.getSession().then(({ data }) => {
-  showApp(data.session?.user || null);
 });
 </script>
-  
-<div id="authBox" style="max-width:420px;margin:30px auto;padding:25px;background:white;border-radius:15px;box-shadow:0 4px 20px #ddd;font-family:Arial">
-  <h2>Welcome to ReplyPilot AI</h2>
-  <p>Create your account or sign in.</p>
-  <input id="authEmail" type="email" placeholder="Email address" style="width:100%;padding:12px;margin:8px 0;box-sizing:border-box">
-  <input id="authPassword" type="password" placeholder="Password (at least 6 characters)" style="width:100%;padding:12px;margin:8px 0;box-sizing:border-box">
-  <button id="signUpBtn" style="width:100%;padding:13px;margin-top:10px;background:#4568f5;color:white;border:0;border-radius:8px">Create account</button>
-  <button id="signInBtn" style="width:100%;padding:13px;margin-top:10px;background:#101a35;color:white;border:0;border-radius:8px">Sign in</button>
-  <p id="authStatus"></p>
-  <button id="signOutBtn" style="display:none;padding:10px">Sign out</button>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-const supabaseClient = supabase.createClient(
-  "https://zsrkyikjyrfxbdkipnhu.supabase.co",
-  "COLLE_ICI_TA_CLE_SB_PUBLISHABLE"
-);
-
-const authBox = document.getElementById("authBox");
-const appMain = document.querySelector("main");
-const appFooter = document.querySelector("footer");
-const statusBox = document.getElementById("authStatus");
-
-function showApp(user) {
-  authBox.style.display = user ? "none" : "block";
-  appMain.style.display = user ? "block" : "none";
-  if (appFooter) appFooter.style.display = user ? "block" : "none";
-  document.getElementById("signOutBtn").style.display = user ? "block" : "none";
-}
-
-showApp(null);
-
-document.getElementById("signUpBtn").onclick = async () => {
-  const email = document.getElementById("authEmail").value.trim();
-  const password = document.getElementById("authPassword").value;
-  const { error } = await supabaseClient.auth.signUp({ email, password });
-  statusBox.textContent = error ? error.message : "Account created. Check your email to verify it.";
-};
-
-document.getElementById("signInBtn").onclick = async () => {
-  const email = document.getElementById("authEmail").value.trim();
-  const password = document.getElementById("authPassword").value;
-  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-  statusBox.textContent = error ? error.message : "Welcome!";
-  if (data.user) showApp(data.user);
-};
-
-document.getElementById("signOutBtn").onclick = async () => {
-  await supabaseClient.auth.signOut();
-  showApp(null);
-  statusBox.textContent = "You have signed out.";
-};
-
-supabaseClient.auth.getSession().then(({ data }) => {
-  showApp(data.session?.user || null);
-});
-</script>
-
-  
 </body>
 </html>

@@ -160,12 +160,66 @@ const tone=document.getElementById("tone");
 const statusBox=document.getElementById("status");
 const output=document.getElementById("output");
 const generateButton=document.getElementById("generateButton");
+  
+async function loadBusinessProfile() {
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  if (!user) return;
 
-businessName.value=localStorage.getItem("businessName")||"";
-businessType.value=localStorage.getItem("businessType")||"";
-businessName.addEventListener("input",()=>localStorage.setItem("businessName",businessName.value));
-businessType.addEventListener("input",()=>localStorage.setItem("businessType",businessType.value));
+  const { data, error } = await supabaseClient
+    .from("business_profiles")
+    .select("business_name, business_type")
+    .eq("user_id", user.id)
+    .maybeSingle();
 
+  if (error) {
+    console.error("Load profile:", error.message);
+    return;
+  }
+
+  businessName.value = data?.business_name || "";
+  businessType.value = data?.business_type || "";
+}
+
+async function saveBusinessProfile() {
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  if (!user) return;
+
+  const profile = {
+    user_id: user.id,
+    business_name: businessName.value.trim(),
+    business_type: businessType.value.trim()
+  };
+
+  const { data: existing, error: lookupError } = await supabaseClient
+    .from("business_profiles")
+    .select("id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (lookupError) {
+    console.error("Profile lookup:", lookupError.message);
+    return;
+  }
+
+  const query = existing
+    ? supabaseClient.from("business_profiles")
+        .update(profile).eq("id", existing.id)
+    : supabaseClient.from("business_profiles")
+        .insert(profile);
+
+  const { error } = await query;
+  if (error) console.error("Save profile:", error.message);
+}
+
+businessName.addEventListener("change", saveBusinessProfile);
+businessType.addEventListener("change", saveBusinessProfile);
+supabaseClient.auth.onAuthStateChange((event, session) => {
+  if (session && event === "SIGNED_IN") {
+    setTimeout(loadBusinessProfile, 0);
+  }
+});
+loadBusinessProfile();
+  
 generateButton.addEventListener("click",async()=>{
 const customerMessage=message.value.trim();
 if(!customerMessage){

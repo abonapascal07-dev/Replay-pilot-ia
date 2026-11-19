@@ -256,15 +256,15 @@ const response = await fetch("/api/chat", {
   headers: {
     "Content-Type": "application/json",
     "Authorization": `Bearer ${session.access_token}`
-  },
-  body: JSON.stringify({
-    history: [{ role: "user", parts: [{ text: prompt }] }]
-  })
-});
-
-const data=await response.json();
-if(!response.ok)throw new Error(data.error||"The request failed.");
-if(!data.reply)throw new Error("No reply was returned.");
+  
+    body: JSON.stringify({
+  history: [
+    ...conversationHistory,
+    { role: "user", parts: [{ text: prompt }] }
+  ]
+})
+const data = await response.json();
+if (!response.ok) throw new Error(data.error || "The request failed.");
 output.textContent=data.reply;
 statusBox.textContent="Reply generated successfully!";
 }catch(error){

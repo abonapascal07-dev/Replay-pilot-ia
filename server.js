@@ -101,12 +101,16 @@ app.post("/api/chat", requireAuth, requireSubscription, async (req, res) => {
       return res.status(400).json({ error: "Please enter a customer message." });
     }
 
-    const customerMessage = history
-      .flatMap(item => {
-        if (typeof item.content === "string") return [item.content];
-        return (item.parts || []).map(part => part.text || "");
-      })
-      .join("\n");
+  const customerMessage = history
+  .map((item) => {
+    const text =
+      typeof item.content === "string"
+        ? item.content
+        : (item.parts || []).map((part) => part.text || "").join("");
+    const who = item.role === "assistant" ? "ReplyPilot draft" : "Customer";
+    return `${who}: ${text}`;
+  })
+  .join("\n");
 
     if (!customerMessage.trim()) {
       return res.status(400).json({ error: "Please enter a customer message." });

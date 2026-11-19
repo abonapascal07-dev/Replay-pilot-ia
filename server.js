@@ -33,10 +33,15 @@ async function requireAuth(req, res, next) {
       }
     });
 
-    if (!authResponse.ok) {
-      return res.status(401).json({ error: "Your session is invalid. Please sign in again." });
-    }
-
+ if (!authResponse.ok) {
+  const authError = await authResponse.text();
+  console.error("Supabase auth check failed:", authResponse.status, authError);
+  return res.status(401).json({
+    error: "Supabase rejected the session.",
+    details: authError
+  });
+ }   
+  
     req.user = await authResponse.json();
     next();
   } catch (error) {

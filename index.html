@@ -208,8 +208,13 @@ async function saveBusinessProfile() {
         .insert(profile);
 
   const { error } = await query;
-  if (error) console.error("Save profile:", error.message);
+if (error) {
+  statusBox.textContent = "Save error: " + error.message;
+  console.error("Save profile:", error.message);
+} else {
+  statusBox.textContent = "Business profile saved successfully!";
 }
+}  
 
 businessName.addEventListener("change", saveBusinessProfile);
 businessType.addEventListener("change", saveBusinessProfile);

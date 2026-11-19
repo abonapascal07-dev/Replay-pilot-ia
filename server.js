@@ -115,6 +115,9 @@ app.post("/api/chat", requireAuth, async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
+app.get("/chat.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "chat.html"));
+});
 
 app.listen(PORT, () => {
   console.log(`ReplyPilot AI running on port ${PORT}`);

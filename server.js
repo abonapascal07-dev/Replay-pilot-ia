@@ -114,6 +114,25 @@ app.post("/api/chat", requireAuth, async (req, res) => {
   }
 });
 
+app.post("/api/public-chat", async (req, res) => {
+  try {
+    const message = req.body?.message;
+
+    if (typeof message !== "string" || !message.trim() || message.length > 2000) {
+      return res.status(400).json({ error: "Invalid message." });
+    }
+
+    // Temporary protection: require a signed-in user.
+    // Public access will need rate limits and abuse controls.
+    return res.status(403).json({
+      error: "Public chat is not enabled yet. Please use the signed-in assistant."
+    });
+  } catch (error) {
+    console.error("Public chat error:", error);
+    return res.status(500).json({ error: "Server error." });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.get("/chat.html", (req, res) => {
   res.sendFile(path.join(__dirname, "chat.html"));

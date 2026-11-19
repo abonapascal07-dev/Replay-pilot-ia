@@ -5,54 +5,81 @@ const path = require("path");
 const app = express();
 
 app.use(express.json());
-app.use(express.static(__dirname));
 
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
-app.post("/api/chat", async (req, res) => {
+// Verify the customer's Supabase session
+async function requireAuth(req, res, next) {
+  try {
+    const token = req.headers.authorization?.replace(/^Bearer\s+/i, "");
+
+    if (!token) {
+      return res.status(401).json({ error: "Please sign in first." });
+    }
+
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+      return res.status(500).json({ error: "Supabase configuration is missing." });
+    }
+
+    const authResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: {
+        apikey: supabaseKey,
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    if (!authResponse.ok) {
+      return res.status(401).json({ error: "Your session is invalid. Please sign in again." });
+    }
+
+    req.user = await authResponse.json();
+    next();
+  } catch (error) {
+    console.error("Authentication error:", error);
+    return res.status(500).json({ error: "Authentication failed." });
+  }
+}
+
+app.post("/api/chat", requireAuth, async (req, res) => {
   try {
     if (!process.env.OPENAI_API_KEY) {
-      return res.status(500).json({
-        error: "OpenAI API key is missing."
-      });
+      return res.status(500).json({ error: "OpenAI API key is missing." });
     }
 
     const history = req.body.history;
 
     if (!Array.isArray(history) || history.length === 0) {
-      return res.status(400).json({
-        error: "Please enter a customer message."
-      });
+      return res.status(400).json({ error: "Please enter a customer message." });
     }
 
     const customerMessage = history
       .flatMap(item => {
-        if (typeof item.content === "string") {
-          return [item.content];
-        }
-        return (item.parts || [])
-          .map(part => part.text || "");
+        if (typeof item.content === "string") return [item.content];
+        return (item.parts || []).map(part => part.text || "");
       })
       .join("\n");
 
-    const response = await fetch(
-      "https://api.openai.com/v1/responses",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: "gpt-6-luna",
-          instructions:
-            "You are ReplyPilot AI, a helpful customer support assistant. Write clear, natural and professional customer replies in English. Be concise and never invent product availability, prices or delivery details.",
-          input: customerMessage
-        })
-      }
-    );
+    if (!customerMessage.trim()) {
+      return res.status(400).json({ error: "Please enter a customer message." });
+    }
+
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: "gpt-6-luna",
+        instructions: "You are ReplyPilot AI, a helpful customer support assistant. Write clear, natural and professional customer replies. Never invent prices, stock availability, or delivery details.",
+        input: customerMessage
+      })
+    });
 
     const data = await response.json();
 
@@ -70,11 +97,10 @@ app.post("/api/chat", async (req, res) => {
       .join("\n");
 
     if (!reply) {
-      throw new Error("No reply was returned.");
+      return res.status(500).json({ error: "No reply was returned." });
     }
 
     res.json({ reply });
-
   } catch (error) {
     console.error("ReplyPilot error:", error);
     res.status(500).json({

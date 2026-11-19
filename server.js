@@ -138,6 +138,10 @@ app.get("/chat.html", (req, res) => {
   res.sendFile(path.join(__dirname, "chat.html"));
 });
 
+app.get("/pricing.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "pricing.html"));
+});
+
 app.listen(PORT, () => {
   console.log(`ReplyPilot AI running on port ${PORT}`);
 });

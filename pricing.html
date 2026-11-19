@@ -40,6 +40,13 @@
     .note{font-size:13px;color:#69758c;text-align:center;margin-top:22px}
     footer{background:#101b38;color:#c7d2eb;text-align:center;padding:30px 15px}
 
+@media screen and (max-width: 768px) {
+  .grid {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+    
 @media (max-width: 768px) {
   .grid {
     grid-template-columns: 1fr;

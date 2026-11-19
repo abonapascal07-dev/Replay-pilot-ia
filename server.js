@@ -50,7 +50,7 @@ async function requireAuth(req, res, next) {
   }
 }
 
-app.post("/api/chat", requireAuth, async (req, res) => {
+app.post("/api/chat", requireAuth, requireSubscription, async (req, res) => {
   try {
     if (!process.env.OPENAI_API_KEY) {
       return res.status(500).json({ error: "OpenAI API key is missing." });

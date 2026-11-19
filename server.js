@@ -181,6 +181,18 @@ app.get("/pricing.html", (req, res) => {
   res.sendFile(path.join(__dirname, "pricing.html"));
 });
 
+app.get("/terms.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "terms.html"));
+});
+
+app.get("/privacy.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "privacy.html"));
+});
+
+app.get("/refund.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "refund.html"));
+});
+
 app.listen(PORT, () => {
   console.log(`ReplyPilot AI running on port ${PORT}`);
 });

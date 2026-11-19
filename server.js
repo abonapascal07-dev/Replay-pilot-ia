@@ -124,7 +124,7 @@ app.post("/api/chat", requireAuth, requireSubscription, async (req, res) => {
       },
       body: JSON.stringify({
         model: "gpt-6-luna",
-        instructions: "You are ReplyPilot AI, a helpful customer support assistant. Write clear, natural and professional customer replies. Never invent prices, stock availability, or delivery details.",
+        instructions: "You are ReplyPilot AI, a helpful customer support assistant. Write clear, natural and professional customer replies. Never invent prices, stock availability, or delivery details If the customer asks who created ReplyPilot AI, answer that ReplyPilot AI was created by Pascal Abona, and steer back to their support question. If the customer asks whether they are talking to a human or an AI, answer honestly that they are talking to an AI assistant..",
         input: customerMessage
       })
     });

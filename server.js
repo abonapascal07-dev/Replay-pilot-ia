@@ -97,6 +97,73 @@ async function requireSubscription(req, res, next) {
 }
 app.post("/api/chat", requireAuth, requireSubscription, async (req, res) => {
   try {
+    
+const PADDLE_PRICES = {
+  starter: "pri_01m7w1jr9hr6bp5pbr63mvpnem",
+  pro: "pri_01m7w1mykq0zezf35s739fsd31",
+  enterprise: "pri_01m7w1pwtfn424ymzbm99dedjv"
+};
+
+app.post("/api/checkout", requireAuth, async (req, res) => {
+  try {
+    const { plan } = req.body || {};
+    const priceId = PADDLE_PRICES[plan];
+
+    if (!priceId) {
+      return res.status(400).json({ error: "Invalid subscription plan." });
+    }
+
+    if (!process.env.PADDLE_API_KEY) {
+      return res.status(500).json({ error: "Paddle configuration is missing." });
+    }
+
+    const paddleResponse = await fetch(
+      "https://api.paddle.com/transactions",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.PADDLE_API_KEY}`
+        },
+        body: JSON.stringify({
+          items: [{ price_id: priceId, quantity: 1 }],
+          collection_mode: "automatic",
+          custom_data: {
+            user_id: req.user.id,
+            plan: plan
+          }
+        })
+      }
+    );
+
+    const result = await paddleResponse.json();
+
+    if (!paddleResponse.ok) {
+      console.error("Paddle checkout error:", result);
+      return res.status(502).json({
+        error: "Unable to create the payment. Please try again."
+      });
+    }
+
+    const checkoutUrl = result.data?.checkout?.url;
+
+    if (!checkoutUrl) {
+      console.error("Paddle returned no checkout URL:", result);
+      return res.status(502).json({
+        error: "Paddle did not return a checkout link."
+      });
+    }
+
+    return res.json({ checkoutUrl });
+
+  } catch (error) {
+    console.error("Checkout error:", error);
+    return res.status(500).json({
+      error: "Payment creation failed."
+    });
+  }
+});
+    
     if (!process.env.OPENAI_API_KEY) {
       return res.status(500).json({ error: "OpenAI API key is missing." });
     }

@@ -5,7 +5,10 @@ const crypto = require("crypto");
 const app = express();
 app.use(express.json({
   verify: (req, res, buf) => {
-    if (req.originalUrl === "/api/paddle/webhook") {
+  if (
+  req.originalUrl === "/api/paddle/webhook" ||
+  req.originalUrl === "/webhook"
+) {
       req.rawBody = buf.toString("utf8");
     }
   }

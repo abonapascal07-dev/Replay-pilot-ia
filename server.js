@@ -3,8 +3,14 @@ const express = require("express");
 const path = require("path");
 
 const app = express();
+app.use(express.json({
+  verify: (req, res, buf) => {
+    if (req.originalUrl === "/api/paddle/webhook") {
+      req.rawBody = buf.toString("utf8");
+    }
+  }
+}));
 
-app.use(express.json());
 
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));

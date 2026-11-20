@@ -128,6 +128,7 @@ app.post("/api/checkout", requireAuth, async (req, res) => {
         body: JSON.stringify({
           items: [{ price_id: priceId, quantity: 1 }],
           collection_mode: "automatic",
+          enable_checkout: true,
           custom_data: {
             user_id: req.user.id,
             plan: plan

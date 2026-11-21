@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ReplyPilot AI - Checkout</title>
+</head>
+<body style="background:#0b1020;color:white;font-family:Arial,sans-serif;text-align:center;padding:40px 16px">
+  <p id="msg">Opening secure checkout...</p>
+  <script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
+  <script>
+    const txn = new URLSearchParams(location.search).get("_ptxn");
+    if (!txn) {
+      document.getElementById("msg").textContent = "No transaction found. Please choose a plan again.";
+    } else {
+      // Sandbox uniquement : décommentez la ligne suivante
+      // Paddle.Environment.set("sandbox");
+      Paddle.Initialize({ token: "live_cdd6c2541ff4e4f969b8ede5360" });
+      Paddle.Checkout.open({ transactionId: txn });
+    }
+  </script>
+</body>
+</html>

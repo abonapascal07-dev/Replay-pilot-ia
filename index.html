@@ -68,7 +68,8 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:25px}
 <main id="app">
 <section class="card">
 <h1>Your AI Support Assistant</h1>
-<p class="desc">Draft professional customer support replies while keeping the conversation context.</p><button id="waBtn" class="primary full" type="button">Connecter WhatsApp</button>
+<p class="desc">Draft professional customer support replies while keeping the conversation context.</p>
+  <button id="waBtn" class="primary full" type="button">Connecter WhatsApp</button>
 <div class="grid">
 <div>
 <label for="businessName">Business name</label>
@@ -314,7 +315,29 @@ statusBox.textContent="Reply copied successfully!";
 }catch{
 statusBox.textContent="Copy failed. Select and copy the reply manually.";
 }
+});</script>
+<script>
+window.fbAsyncInit = function() {
+  FB.init({ appId: '1483751340345736', autoLogAppEvents: true, xfbml: false, version: 'v21.0' });
+};
+(function(d, s, id){
+  if (d.getElementById(id)) return;
+  var js = d.createElement(s); js.id = id;
+  js.src = "https://connect.facebook.net/fr_FR/sdk.js";
+  d.getElementsByTagName(s)[0].parentNode.insertBefore(js, d.getElementsByTagName(s)[0]);
+}(document, 'script', 'facebook-jssdk'));
+
+document.getElementById('waBtn').addEventListener('click', function() {
+  FB.login(function(response) {
+    console.log('Embedded Signup:', response);
+  }, {
+    config_id: '1178146298233947',
+    response_type: 'code',
+    override_default_response_type: true,
+    extras: { setup: {}, sessionInfoVersion: '3' }
+  });
 });
+</script>
 </script>
 </body>
 </html>

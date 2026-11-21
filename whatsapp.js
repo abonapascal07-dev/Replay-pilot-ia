@@ -25,45 +25,45 @@ function isValidSignature(rawBody, signatureHeader) {
   );
 }
 
+// Gemini AI
 async function generateReply(history) {
-  const apiKey = process.env.KIMI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
-    throw new Error("KIMI_API_KEY is missing in Render.");
+    throw new Error("GEMINI_API_KEY is missing in Render.");
   }
 
   const businessName = process.env.BUSINESS_NAME || "our business";
 
-  const messages = [
-    {
-      role: "system",
-      content:
-        `You are the customer support assistant of ${businessName}. ` +
-        "Reply in the same language as the customer. " +
-        "Be polite and concise. Do not invent prices, stock availability, " +
-        "order status or delivery details. If you cannot answer, " +
-        "say that a human agent will follow up."
-    },
-    ...history.map(message => ({
-      role: message.role === "assistant" ? "assistant" : "user",
-      content: message.content
-    }))
-  ];
+  const contents = history.map(message => ({
+    role: message.role === "assistant" ? "model" : "user",
+    parts: [{ text: message.content }]
+  }));
 
   const response = await fetch(
-    "https://api.moonshot.ai/v1/chat/completions",
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent",
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`
+        "x-goog-api-key": apiKey
       },
       body: JSON.stringify({
-        model: "kimi-k2.6",
-        messages,
-        thinking: { type: "disabled" },
-        temperature: 0.4,
-        max_tokens: 300
+        systemInstruction: {
+          parts: [{
+            text:
+              `You are the customer support assistant of ${businessName}. ` +
+              "Reply in the same language as the customer. " +
+              "Be polite and concise. Do not invent prices, stock availability, " +
+              "order status or delivery details. If you cannot answer, " +
+              "say that a human agent will follow up."
+          }]
+        },
+        contents,
+        generationConfig: {
+          temperature: 0.4,
+          maxOutputTokens: 300
+        }
       })
     }
   );
@@ -71,62 +71,98 @@ async function generateReply(history) {
   const data = await response.json();
 
   if (!response.ok) {
-    console.error("Kimi API error:", data);
+    console.error("Gemini API error:", data);
     throw new Error(
-      "Kimi API request failed: " +
+      "Gemini API request failed: " +
       (data.error?.message || response.status)
     );
   }
 
-  const reply = data.choices?.[0]?.message?.content?.trim();
+  const reply = data.candidates?.[0]?.content?.parts
+    ?.map(part => part.text || "")
+    .join("\n")
+    .trim();
 
   if (!reply) {
-    throw new Error("Kimi returned an empty response.");
+    throw new Error("Gemini returned an empty response.");
   }
 
   return reply;
 }
 
+// Send WhatsApp message
 async function sendText(to, text) {
+  const token = process.env.WHATSAPP_TOKEN;
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+
+  if (!token || !phoneNumberId) {
+    throw new Error("WhatsApp token or phone number ID is missing.");
+  }
+
   const response = await fetch(
-    `https://graph.facebook.com/${GRAPH_VERSION}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+    `https://graph.facebook.com/${GRAPH_VERSION}/${phoneNumberId}/messages`,
     {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
+        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
         messaging_product: "whatsapp",
         to,
         type: "text",
-        text: { preview_url: false, body: text }
+        text: {
+          preview_url: false,
+          body: text
+        }
       })
     }
   );
 
   if (!response.ok) {
-    throw new Error("WhatsApp send error: " + (await response.text()));
+    throw new Error(
+      "WhatsApp send error: " + (await response.text())
+    );
   }
 }
 
+// Handle incoming customer message
 async function handleMessage(from, messageId, body) {
   if (seenMessageIds.has(messageId)) return;
 
   seenMessageIds.add(messageId);
-  if (seenMessageIds.size > 1000) seenMessageIds.clear();
+
+  if (seenMessageIds.size > 1000) {
+    seenMessageIds.clear();
+  }
 
   const previous = conversations.get(from) || [];
-  const updated = [...previous, { role: "user", content: body }];
 
-  const reply = await generateReply(updated.slice(-MAX_HISTORY));
+  const updated = [
+    ...previous,
+    { role: "user", content: body }
+  ];
+
+  const reply = await generateReply(
+    updated.slice(-MAX_HISTORY)
+  );
+
   if (!reply) return;
 
-  const withReply = [...updated, { role: "assistant", content: reply }];
-  conversations.set(from, withReply.slice(-MAX_HISTORY));
+  const withReply = [
+    ...updated,
+    { role: "assistant", content: reply }
+  ];
+
+  conversations.set(
+    from,
+    withReply.slice(-MAX_HISTORY)
+  );
 
   if (conversations.size > MAX_CONVERSATIONS) {
-    conversations.delete(conversations.keys().next().value);
+    conversations.delete(
+      conversations.keys().next().value
+    );
   }
 
   if (process.env.WHATSAPP_AUTO_REPLY === "true") {
@@ -137,6 +173,7 @@ async function handleMessage(from, messageId, body) {
   }
 }
 
+// Process WhatsApp webhook payload
 async function processPayload(payload) {
   for (const entry of payload.entry || []) {
     for (const change of entry.changes || []) {
@@ -144,18 +181,27 @@ async function processPayload(payload) {
         if (msg.type !== "text" || !msg.text?.body) continue;
 
         console.log("WhatsApp message from", msg.from);
-        await handleMessage(msg.from, msg.id, msg.text.body.trim());
+
+        await handleMessage(
+          msg.from,
+          msg.id,
+          msg.text.body.trim()
+        );
       }
     }
   }
 }
 
+// Receive WhatsApp webhook
 function handleWebhook(req, res) {
   const rawBody = req.body;
 
   if (
     !Buffer.isBuffer(rawBody) ||
-    !isValidSignature(rawBody, req.headers["x-hub-signature-256"])
+    !isValidSignature(
+      rawBody,
+      req.headers["x-hub-signature-256"]
+    )
   ) {
     console.error("WhatsApp: invalid signature");
     return res.sendStatus(403);
@@ -164,6 +210,7 @@ function handleWebhook(req, res) {
   res.sendStatus(200);
 
   let payload;
+
   try {
     payload = JSON.parse(rawBody.toString("utf8"));
   } catch (error) {
@@ -171,10 +218,13 @@ function handleWebhook(req, res) {
     return;
   }
 
-  processPayload(payload).catch(error =>
-    console.error("WhatsApp processing error:", error.message)
-  );
+  processPayload(payload).catch(error => {
+    console.error(
+      "WhatsApp processing error:",
+      error.message
+    );
+  });
 }
 
 module.exports = { handleWebhook };
-                     
+  

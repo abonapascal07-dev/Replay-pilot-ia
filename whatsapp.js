@@ -26,43 +26,44 @@ function isValidSignature(rawBody, signatureHeader) {
 }
 
 async function generateReply(history) {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.KIMI_API_KEY;
 
   if (!apiKey) {
-    throw new Error("GEMINI_API_KEY is missing in Render.");
+    throw new Error("KIMI_API_KEY is missing in Render.");
   }
 
-  const businessName = process.env.BUSINESS_NAME || "notre entreprise";
+  const businessName = process.env.BUSINESS_NAME || "our business";
 
-  const contents = history.map(message => ({
-    role: message.role === "assistant" ? "model" : "user",
-    parts: [{ text: message.content }]
-  }));
+  const messages = [
+    {
+      role: "system",
+      content:
+        `You are the customer support assistant of ${businessName}. ` +
+        "Reply in the same language as the customer. " +
+        "Be polite and concise. Do not invent prices, stock availability, " +
+        "order status or delivery details. If you cannot answer, " +
+        "say that a human agent will follow up."
+    },
+    ...history.map(message => ({
+      role: message.role === "assistant" ? "assistant" : "user",
+      content: message.content
+    }))
+  ];
 
   const response = await fetch(
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent",
+    "https://api.moonshot.ai/v1/chat/completions",
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-goog-api-key": apiKey
+        "Authorization": `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        systemInstruction: {
-          parts: [{
-            text:
-              `You are the customer support assistant of ${businessName}. ` +
-              "Reply to the customer's latest message in the same language they use. " +
-              "Be polite and concise. Do not invent prices, stock availability, " +
-              "order status or delivery details. If you cannot answer, say that " +
-              "a human agent will follow up. Return only the reply text."
-          }]
-        },
-        contents,
-        generationConfig: {
-          temperature: 0.4,
-          maxOutputTokens: 300
-        }
+        model: "kimi-k2.6",
+        messages,
+        thinking: { type: "disabled" },
+        temperature: 0.4,
+        max_tokens: 300
       })
     }
   );
@@ -70,20 +71,17 @@ async function generateReply(history) {
   const data = await response.json();
 
   if (!response.ok) {
-    console.error("Gemini API error:", data);
+    console.error("Kimi API error:", data);
     throw new Error(
-      "Gemini API request failed: " +
+      "Kimi API request failed: " +
       (data.error?.message || response.status)
     );
   }
 
-  const reply = (data.candidates?.[0]?.content?.parts || [])
-    .map(part => part.text || "")
-    .join("\n")
-    .trim();
+  const reply = data.choices?.[0]?.message?.content?.trim();
 
   if (!reply) {
-    throw new Error("Gemini returned an empty response.");
+    throw new Error("Kimi returned an empty response.");
   }
 
   return reply;
@@ -179,5 +177,4 @@ function handleWebhook(req, res) {
 }
 
 module.exports = { handleWebhook };
-
-                                 
+                     

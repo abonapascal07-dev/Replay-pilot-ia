@@ -100,6 +100,10 @@ app.get("/pricing", (req, res) => {
   res.sendFile(path.join(__dirname, "pricing.html"));
 });
 
+app.get("/checkout", (req, res) => {
+  res.sendFile(path.join(__dirname, "checkout.html"));
+});
+
 app.get("/health", (req, res) => {
   res.json({ status: "ok", service: "ReplyPilot AI" });
 });
@@ -240,13 +244,17 @@ app.post("/api/chat", requireAuth, async (req, res) => {
       });
     }
 
-    const message = String(req.body.message || "").trim();
+    const history = Array.isArray(req.body.history) ? req.body.history.slice(-20) : [];
+const input = history
+  .map(h => ({
+    role: h.role === "assistant" ? "assistant" : "user",
+    content: (h.parts || []).map(p => p.text || "").join("\n")
+  }))
+  .filter(m => m.content.trim());
 
-    if (!message) {
-      return res.status(400).json({
-        error: "Message cannot be empty."
-      });
-    }
+if (!input.length) {
+  return res.status(400).json({ error: "Message cannot be empty." });
+}
 
     const response = await fetch(
       "https://api.openai.com/v1/responses",
@@ -258,7 +266,7 @@ app.post("/api/chat", requireAuth, async (req, res) => {
         },
         body: JSON.stringify({
           model: "gpt-4.1-mini",
-          input: message
+        input: input
         })
       }
     );

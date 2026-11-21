@@ -151,7 +151,15 @@ app.get("/pricing", (req, res) => {
 app.get("/checkout", (req, res) => {
   res.sendFile(path.join(__dirname, "checkout.html"));
 });
+app.get("/checkout", (req, res) => {
+  res.sendFile(path.join(__dirname, "checkout.html"));
+});
 
+app.get("/terms.html", ...   <- nouveau bloc
+...
+});
+
+app.get("/health", ...
 app.get("/health", (req, res) => {
   res.json({ status: "ok", service: "ReplyPilot AI" });
 });

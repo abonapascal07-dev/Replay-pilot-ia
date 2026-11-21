@@ -361,7 +361,7 @@ app.get("/api/whatsapp/webhook", (req, res) => {
   }
 
   return res.sendStatus(403);
-
+});
 // Unknown routes
 app.use((req, res) => {
   res.status(404).json({ error: "Route not found." });

@@ -151,6 +151,17 @@ app.get("/pricing", (req, res) => {
 app.get("/checkout", (req, res) => {
   res.sendFile(path.join(__dirname, "checkout.html"));
 });
+app.get("/terms.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "terms.html"));
+});
+
+app.get("/privacy.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "privacy.html"));
+});
+
+app.get("/refund.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "refund.html"));
+});
 app.get("/checkout", (req, res) => {
   res.sendFile(path.join(__dirname, "checkout.html"));
 });

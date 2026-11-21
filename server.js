@@ -19,7 +19,7 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 const PLANS = {
   starter: "pri_01m7w1jr9hr6bp5pbr63mvpnem",
-  pro: "pri_01m7w1mykq0zezf35s739fsd31",
+  pro: "pri_01m7yspafm8vk7fpyjjr5nv3dg",
   enterprise: "pri_01m7w1pwtfn424ymzbm99dedjv"
 };
 

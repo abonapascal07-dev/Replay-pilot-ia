@@ -77,16 +77,8 @@ const data = event.data || {};
 const userId = data.custom_data?.supabase_user_id;
 const plan = data.custom_data?.plan || null;
 
-const statusByEvent = {
-  "subscription.created": "active",
-  "subscription.activated": "active",
-  "subscription.updated": "active",
-  "subscription.past_due": "past_due",
-  "subscription.paused": "paused",
-  "subscription.canceled": "canceled"
-};
 
-const status = statusByEvent[eventType];
+const status = data.status;
 
 if (status && userId) {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

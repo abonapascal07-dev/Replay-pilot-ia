@@ -1,1 +1,132 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ReplyPilot AI - Pricing</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f5f7fc;color:#17213b}
+header{background:#101b38;color:white;padding:20px;text-align:center;font-size:23px;font-weight:bold}
+.container{max-width:1050px;margin:55px auto;padding:0 18px}
+h1{text-align:center}
+.subtitle{text-align:center;color:#68748b;margin-bottom:35px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.card{background:white;border:1px solid #dce3f0;border-radius:15px;padding:25px;box-shadow:0 5px 20px #0000000a}
+.featured{border:2px solid #4568f5}
+.price{font-size:35px;font-weight:bold;margin:20px 0;color:#172c72}
+.price span{font-size:15px;color:#68748b;font-weight:normal}
+ul{padding-left:20px;line-height:2;color:#58667f;min-height:140px}
+button{width:100%;padding:15px;border:0;border-radius:9px;background:#4568f5;color:white;font-weight:bold;font-size:16px;cursor:pointer}
+button:disabled{opacity:.6;cursor:wait}
+#message{text-align:center;margin:25px 0;color:#b42318}
+.back{text-align:center;margin:30px}
+.back a{color:#3457c8}
+@media(max-width:750px){.grid{grid-template-columns:1fr}.container{margin:30px auto}.price{font-size:32px}}
+</style>
+</head>
+<body>
+<header>ReplyPilot AI</header>
+<div class="container">
+<h1>Choose Your Plan</h1>
+<p class="subtitle">Choose the subscription that fits your business.</p>
+
+<div class="grid">
+<div class="card">
+<h2>Starter</h2>
+<div class="price">$150<span>/month</span></div>
+<ul>
+<li>AI customer replies</li>
+<li>Professional reply tones</li>
+<li>Conversation context</li>
+<li>Copy-ready responses</li>
+</ul>
+<button onclick="subscribe('starter',this)">Choose Starter</button>
+</div>
+
+<div class="card featured">
+<h2>Pro</h2>
+<div class="price">$299<span>/month</span></div>
+<ul>
+<li>Everything in Starter</li>
+<li>Advanced workflows</li>
+<li>Team features</li>
+<li>Priority support</li>
+</ul>
+<button onclick="subscribe('pro',this)">Choose Pro</button>
+</div>
+
+<div class="card">
+<h2>Enterprise</h2>
+<div class="price">$599<span>/month</span></div>
+<ul>
+<li>Business customization</li>
+<li>Team management</li>
+<li>Advanced integrations</li>
+<li>Onboarding support</li>
+</ul>
+<button onclick="subscribe('enterprise',this)">Choose Enterprise</button>
+</div>
+</div>
+
+<p id="message"></p>
+<div class="back"><a href="/">Back to ReplyPilot AI</a></div>
+</div>
+
+<script>
+function getAccessToken(){
+  for(let i=0;i<localStorage.length;i++){
+    const key=localStorage.key(i);
+    if(!key || !key.startsWith("sb-")) continue;
+    try{
+      const data=JSON.parse(localStorage.getItem(key));
+      if(data && data.access_token) return data.access_token;
+    }catch(e){}
+  }
+  return null;
+}
+
+async function subscribe(plan,button){
+  const message=document.getElementById("message");
+  const token=getAccessToken();
+
+  if(!token){
+    message.textContent="Please sign in again before choosing a plan.";
+    return;
+  }
+
+  button.disabled=true;
+  message.textContent="Connecting to secure checkout...";
+
+  try{
+    const response=await fetch("/api/checkout",{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "Authorization":"Bearer "+token
+      },
+      body:JSON.stringify({plan:plan})
+    });
+
+    const result=await response.json();
+
+    if(!response.ok){
+      throw new Error(result.error || result.message || "Checkout could not be created.");
+    }
+
+    const checkoutUrl=result.checkout_url || result.url;
+    if(!checkoutUrl){
+      throw new Error("Checkout link was not returned by the server.");
+    }
+
+    window.location.href=checkoutUrl;
+  }catch(error){
+    message.textContent=error.message;
+    button.disabled=false;
+  }
+}
+</script>
+</body>
+  </html>
+

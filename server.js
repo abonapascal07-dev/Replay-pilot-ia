@@ -285,7 +285,105 @@ app.post("/webhook", (req, res) => {
   res.sendStatus(200);
 });
 
-// Paddle webhook signature verification
+// Paddle webhook: verify payment and activate subscription
+app.post("/api/paddle/webhook", async (req, res) => {
+  try {
+    const secret = process.env.PADDLE_WEBHOOK_SECRET;
+    const header = req.get("Paddle-Signature");
+
+    if (!secret || !header || !req.rawBody) {
+      return res.sendStatus(401);
+    }
+
+    const parts = Object.fromEntries(
+      header.split(";").map(part => part.split("="))
+    );
+
+    if (!parts.ts || !parts.h1) {
+      return res.sendStatus(401);
+    }
+
+    const expected = crypto
+      .createHmac("sha256", secret)
+      .update(`${parts.ts}:${req.rawBody}`)
+      .digest("hex");
+
+    const a = Buffer.from(parts.h1, "hex");
+    const b = Buffer.from(expected, "hex");
+
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+      return res.sendStatus(401);
+    }
+
+    const event = req.body;
+    const eventType = event?.event_type;
+    const data = event?.data;
+    const customData = data?.custom_data;
+
+    if (
+      eventType === "subscription.activated" ||
+      eventType === "subscription.updated"
+    ) {
+      const userId = customData?.user_id;
+      const plan = customData?.plan;
+      const subscriptionId = data?.id;
+      const periodEnd = data?.current_billing_period?.ends_at;
+
+      if (!userId || !plan || !subscriptionId || !periodEnd) {
+        console.error("Missing subscription information.");
+        return res.sendStatus(400);
+      }
+
+      const supabaseUrl = process.env.SUPABASE_URL;
+      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+      if (!supabaseUrl || !supabaseKey) {
+        console.error("Supabase admin configuration missing.");
+        return res.sendStatus(500);
+      }
+
+      const response = await fetch(
+        `${supabaseUrl}/rest/v1/subscriptions`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: supabaseKey,
+            Authorization: `Bearer ${supabaseKey}`,
+            Prefer: "resolution=merge-duplicates,return=minimal"
+          },
+          body: JSON.stringify({
+            user_id: userId,
+            plan,
+            status: "active",
+            payment_provider: "paddle",
+            provider_subscription_id: subscriptionId,
+            current_period_end: periodEnd
+          })
+        }
+      );
+
+      if (!response.ok) {
+        console.error("Supabase subscription update failed:", await response.text());
+        return res.sendStatus(500);
+      }
+    }
+
+    if (
+      eventType === "subscription.canceled" ||
+      eventType === "subscription.paused"
+    ) {
+      console.log("Subscription no longer active:", data?.id);
+    }
+
+    console.log("Paddle webhook processed:", eventType);
+    return res.sendStatus(200);
+
+  } catch (error) {
+    console.error("Paddle webhook error:", error);
+    return res.sendStatus(500);
+  }
+});
 app.post("/api/paddle/webhook", (req, res) => {
   const secret = process.env.PADDLE_WEBHOOK_SECRET;
   const header = req.get("Paddle-Signature");

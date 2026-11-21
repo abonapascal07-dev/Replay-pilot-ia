@@ -72,9 +72,60 @@ app.post(
       const event = JSON.parse(req.body.toString("utf8"));
 
       console.log("Verified Paddle event:", event.event_type);
+const eventType = event.event_type;
+const data = event.data || {};
+const userId = data.custom_data?.supabase_user_id;
+const plan = data.custom_data?.plan || null;
 
-      // Subscription records must be synchronized
-      // with your actual Supabase table before granting access.
+const statusByEvent = {
+  "subscription.created": "active",
+  "subscription.activated": "active",
+  "subscription.updated": "active",
+  "subscription.past_due": "past_due",
+  "subscription.paused": "paused",
+  "subscription.canceled": "canceled"
+};
+
+const status = statusByEvent[eventType];
+
+if (status && userId) {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const headers = {
+    apikey: serviceKey,
+    Authorization: `Bearer ${serviceKey}`,
+    "Content-Type": "application/json"
+  };
+
+  // 1. Mettre à jour la ligne existante de cet utilisateur
+  const patchResponse = await fetch(
+    `${SUPABASE_URL}/rest/v1/subscriptions?user_id=eq.${userId}`,
+    {
+      method: "PATCH",
+      headers: { ...headers, Prefer: "return=representation" },
+      body: JSON.stringify({ plan, status })
+    }
+  );
+
+  const updated = await patchResponse.json();
+
+  // 2. Si aucune ligne n'existait, en créer une
+  if (patchResponse.ok && Array.isArray(updated) && updated.length === 0) {
+    const insertResponse = await fetch(`${SUPABASE_URL}/rest/v1/subscriptions`, {
+      method: "POST",
+      headers: { ...headers, Prefer: "return=minimal" },
+      body: JSON.stringify({ user_id: userId, plan, status })
+    });
+
+    if (!insertResponse.ok) {
+      console.error("Subscription insert failed:", await insertResponse.text());
+    }
+  } else if (!patchResponse.ok) {
+    console.error("Subscription update failed:", updated);
+  }
+
+  console.log("Subscription updated:", userId, status);
+}
+      
 
       return res.status(200).json({ received: true });
 

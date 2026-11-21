@@ -2,7 +2,7 @@
 const express = require("express");
 const path = require("path");
 const crypto = require("crypto");
-
+const whatsapp = require("./whatsapp");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -129,6 +129,11 @@ if (status && userId) {
 );
 
 // JSON middleware
+app.post(
+  "/api/whatsapp/webhook",
+  express.raw({ type: "application/json" }),
+  whatsapp.handleWebhook
+);
 app.use(express.json({ limit: "1mb" }));
 
 // Static website files

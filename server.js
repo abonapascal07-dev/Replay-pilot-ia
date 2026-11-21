@@ -361,17 +361,6 @@ app.get("/api/whatsapp/webhook", (req, res) => {
   }
 
   return res.sendStatus(403);
-});
-
-// Receive WhatsApp messages
-app.post("/api/whatsapp/webhook", (req, res) => {
-  console.log(
-    "WhatsApp webhook received:",
-    JSON.stringify(req.body)
-  );
-
-  return res.sendStatus(200);
-});
 
 // Unknown routes
 app.use((req, res) => {

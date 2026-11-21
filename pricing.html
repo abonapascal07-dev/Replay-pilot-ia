@@ -133,7 +133,7 @@
           throw new Error(data.error || data.message || "Checkout request failed.");
         }
 
-        const checkoutUrl = data.checkout_url || data.url;
+      const checkoutUrl = data.checkoutUrl || data.checkout_url || data.url;
 
         if (!checkoutUrl) {
           throw new Error("The server did not return a checkout URL.");

@@ -1,8 +1,8 @@
-
 const express = require("express");
 const path = require("path");
 const crypto = require("crypto");
 const whatsapp = require("./whatsapp");
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -15,7 +15,7 @@ const SUPABASE_KEY =
 const PADDLE_API_KEY = process.env.PADDLE_API_KEY;
 const PADDLE_ENV = process.env.PADDLE_ENV || "production";
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 const PLANS = {
   starter: "pri_01m7w1jr9hr6bp5pbr63mvpnem",
@@ -23,7 +23,7 @@ const PLANS = {
   enterprise: "pri_01m7w1pwtfn424ymzbm99dedjv"
 };
 
-// Paddle webhook needs the original request body
+// Paddle webhook
 app.post(
   ["/webhook", "/api/paddle/webhook"],
   express.raw({ type: "application/json" }),
@@ -72,52 +72,69 @@ app.post(
       const event = JSON.parse(req.body.toString("utf8"));
 
       console.log("Verified Paddle event:", event.event_type);
-const eventType = event.event_type;
-const data = event.data || {};
-const userId = data.custom_data?.supabase_user_id;
-const plan = data.custom_data?.plan || null;
 
+      const eventType = event.event_type;
+      const data = event.data || {};
+      const userId = data.custom_data?.supabase_user_id;
+      const plan = data.custom_data?.plan || null;
+      const status = data.status;
 
-const status = data.status;
+      if (status && userId) {
+        const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (status && userId) {
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const headers = {
-    apikey: serviceKey,
-    Authorization: `Bearer ${serviceKey}`,
-    "Content-Type": "application/json"
-  };
+        const headers = {
+          apikey: serviceKey,
+          Authorization: `Bearer ${serviceKey}`,
+          "Content-Type": "application/json"
+        };
 
-  // 1. Mettre à jour la ligne existante de cet utilisateur
-  const patchResponse = await fetch(
-    `${SUPABASE_URL}/rest/v1/subscriptions?user_id=eq.${userId}`,
-    {
-      method: "PATCH",
-      headers: { ...headers, Prefer: "return=representation" },
-      body: JSON.stringify({ plan, status })
-    }
-  );
+        const patchResponse = await fetch(
+          `${SUPABASE_URL}/rest/v1/subscriptions?user_id=eq.${userId}`,
+          {
+            method: "PATCH",
+            headers: {
+              ...headers,
+              Prefer: "return=representation"
+            },
+            body: JSON.stringify({ plan, status })
+          }
+        );
 
-  const updated = await patchResponse.json();
+        const updated = await patchResponse.json();
 
-  // 2. Si aucune ligne n'existait, en créer une
-  if (patchResponse.ok && Array.isArray(updated) && updated.length === 0) {
-    const insertResponse = await fetch(`${SUPABASE_URL}/rest/v1/subscriptions`, {
-      method: "POST",
-      headers: { ...headers, Prefer: "return=minimal" },
-      body: JSON.stringify({ user_id: userId, plan, status })
-    });
+        if (
+          patchResponse.ok &&
+          Array.isArray(updated) &&
+          updated.length === 0
+        ) {
+          const insertResponse = await fetch(
+            `${SUPABASE_URL}/rest/v1/subscriptions`,
+            {
+              method: "POST",
+              headers: {
+                ...headers,
+                Prefer: "return=minimal"
+              },
+              body: JSON.stringify({
+                user_id: userId,
+                plan,
+                status
+              })
+            }
+          );
 
-    if (!insertResponse.ok) {
-      console.error("Subscription insert failed:", await insertResponse.text());
-    }
-  } else if (!patchResponse.ok) {
-    console.error("Subscription update failed:", updated);
-  }
+          if (!insertResponse.ok) {
+            console.error(
+              "Subscription insert failed:",
+              await insertResponse.text()
+            );
+          }
+        } else if (!patchResponse.ok) {
+          console.error("Subscription update failed:", updated);
+        }
 
-  console.log("Subscription updated:", userId, status);
-}
-      
+        console.log("Subscription updated:", userId, status);
+      }
 
       return res.status(200).json({ received: true });
 
@@ -128,12 +145,14 @@ if (status && userId) {
   }
 );
 
-// JSON middleware
+// WhatsApp webhook
 app.post(
   "/api/whatsapp/webhook",
   express.raw({ type: "application/json" }),
   whatsapp.handleWebhook
 );
+
+// JSON middleware
 app.use(express.json({ limit: "1mb" }));
 
 // Static website files
@@ -151,6 +170,7 @@ app.get("/pricing", (req, res) => {
 app.get("/checkout", (req, res) => {
   res.sendFile(path.join(__dirname, "checkout.html"));
 });
+
 app.get("/terms.html", (req, res) => {
   res.sendFile(path.join(__dirname, "terms.html"));
 });
@@ -162,6 +182,7 @@ app.get("/privacy.html", (req, res) => {
 app.get("/refund.html", (req, res) => {
   res.sendFile(path.join(__dirname, "refund.html"));
 });
+
 app.get("/health", (req, res) => {
   res.json({ status: "ok", service: "ReplyPilot AI" });
 });
@@ -175,7 +196,9 @@ async function requireAuth(req, res, next) {
     );
 
     if (!token) {
-      return res.status(401).json({ error: "Please sign in." });
+      return res.status(401).json({
+        error: "Please sign in."
+      });
     }
 
     if (!SUPABASE_URL || !SUPABASE_KEY) {
@@ -208,7 +231,10 @@ async function requireAuth(req, res, next) {
 
   } catch (error) {
     console.error("Authentication error:", error.message);
-    return res.status(500).json({ error: "Authentication failed." });
+
+    return res.status(500).json({
+      error: "Authentication failed."
+    });
   }
 }
 
@@ -225,7 +251,9 @@ app.post("/api/checkout", requireAuth, async (req, res) => {
     const priceId = PLANS[plan];
 
     if (!priceId) {
-      return res.status(400).json({ error: "Invalid plan." });
+      return res.status(400).json({
+        error: "Invalid plan."
+      });
     }
 
     const apiUrl =
@@ -293,38 +321,58 @@ app.post("/api/checkout", requireAuth, async (req, res) => {
   }
 });
 
-// AI chat
+// AI chat - Gemini
 app.post("/api/chat", requireAuth, async (req, res) => {
   try {
-    if (!OPENAI_API_KEY) {
+    if (!GEMINI_API_KEY) {
       return res.status(500).json({
-        error: "OpenAI API key is missing in Render."
+        error: "Gemini API key is missing in Render."
       });
     }
 
-    const history = Array.isArray(req.body.history) ? req.body.history.slice(-20) : [];
-const input = history
-  .map(h => ({
-    role: h.role === "assistant" ? "assistant" : "user",
-    content: (h.parts || []).map(p => p.text || "").join("\n")
-  }))
-  .filter(m => m.content.trim());
+    const history = Array.isArray(req.body.history)
+      ? req.body.history.slice(-20)
+      : [];
 
-if (!input.length) {
-  return res.status(400).json({ error: "Message cannot be empty." });
-}
+    const contents = history
+      .map(h => {
+        const text = (h.parts || [])
+          .map(p => p.text || "")
+          .join("\n")
+          .trim();
+
+        if (!text) return null;
+
+        return {
+          role: h.role === "assistant" ? "model" : "user",
+          parts: [{ text }]
+        };
+      })
+      .filter(Boolean);
+
+    if (
+      !contents.length ||
+      !contents.some(message => message.role === "user")
+    ) {
+      return res.status(400).json({
+        error: "Message cannot be empty."
+      });
+    }
 
     const response = await fetch(
-      "https://api.openai.com/v1/responses",
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent",
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          "x-goog-api-key": GEMINI_API_KEY
         },
         body: JSON.stringify({
-          model: "gpt-4.1-mini",
-        input: input
+          contents,
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 1024
+          }
         })
       }
     );
@@ -332,22 +380,31 @@ if (!input.length) {
     const data = await response.json();
 
     if (!response.ok) {
-      console.error("OpenAI error:", data);
+      console.error("Gemini API error:", data);
+
       return res.status(502).json({
-        error: "AI service request failed."
+        error: "Gemini AI request failed. Check Render logs."
       });
     }
 
-    const answer = (data.output || [])
-      .flatMap(item => item.content || [])
-      .filter(item => item.type === "output_text")
-      .map(item => item.text)
-      .join("\n");
+    const answer = (data.candidates?.[0]?.content?.parts || [])
+      .map(part => part.text || "")
+      .join("\n")
+      .trim();
+
+    if (!answer) {
+      console.error("Gemini returned no text:", data);
+
+      return res.status(502).json({
+        error: "Gemini returned an empty response."
+      });
+    }
 
     return res.json({ reply: answer });
 
   } catch (error) {
-    console.error("Chat error:", error.message);
+    console.error("Gemini chat error:", error.message);
+
     return res.status(500).json({
       error: "AI assistant failed."
     });
@@ -372,13 +429,16 @@ app.get("/api/whatsapp/webhook", (req, res) => {
 
   return res.sendStatus(403);
 });
+
 // Unknown routes
 app.use((req, res) => {
-  res.status(404).json({ error: "Route not found." });
+  res.status(404).json({
+    error: "Route not found."
+  });
 });
 
 // Server startup
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`ReplyPilot AI running on port ${PORT}`);
 });
-    
+      

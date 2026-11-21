@@ -1,3 +1,4 @@
+
 const express = require("express");
 const path = require("path");
 const crypto = require("crypto");
@@ -7,11 +8,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json({
   verify: (req, res, buf) => {
-    if (
-      ["/webhook", "/api/paddle/webhook"].includes(
-        req.originalUrl.split("?")[0]
-      )
-    ) {
+    if (["/webhook", "/api/paddle/webhook"].includes(req.originalUrl.split("?")[0])) {
       req.rawBody = buf.toString("utf8");
     }
   }
@@ -21,36 +18,20 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok", service: "ReplyPilot AI" });
 });
 
-app.get("/", (req, res) =>
-  res.sendFile(path.join(__dirname, "index.html"))
-);
+app.get("/", (req, res) => res.sendFile(path.join(__dirname, "index.html")));
 
-for (const page of [
-  "chat.html",
-  "pricing.html",
-  "terms.html",
-  "privacy.html",
-  "refund.html"
-]) {
-  app.get("/" + page, (req, res) =>
-    res.sendFile(path.join(__dirname, page))
-  );
+for (const page of ["chat.html", "pricing.html", "terms.html", "privacy.html", "refund.html"]) {
+  app.get("/" + page, (req, res) => res.sendFile(path.join(__dirname, page)));
 }
 
-// Supabase authentication
 async function requireAuth(req, res, next) {
   try {
     const token = req.headers.authorization?.replace(/^Bearer\s+/i, "");
     const url = process.env.SUPABASE_URL;
     const key = process.env.SUPABASE_ANON_KEY;
 
-    if (!token) {
-      return res.status(401).json({ error: "Please sign in first." });
-    }
-
-    if (!url || !key) {
-      return res.status(500).json({ error: "Supabase configuration missing." });
-    }
+    if (!token) return res.status(401).json({ error: "Please sign in first." });
+    if (!url || !key) return res.status(500).json({ error: "Supabase configuration missing." });
 
     const response = await fetch(`${url}/auth/v1/user`, {
       headers: {
@@ -60,7 +41,9 @@ async function requireAuth(req, res, next) {
     });
 
     if (!response.ok) {
-      return res.status(401).json({ error: "Invalid session." });
+      const detail = await response.text();
+      console.error("Supabase authentication rejected:", response.status, detail);
+      return res.status(401).json({ error: "Invalid session. Please sign in again." });
     }
 
     req.user = await response.json();
@@ -72,7 +55,6 @@ async function requireAuth(req, res, next) {
   }
 }
 
-// Active subscription check
 async function requireSubscription(req, res, next) {
   try {
     const response = await fetch(
@@ -86,24 +68,17 @@ async function requireSubscription(req, res, next) {
     );
 
     if (!response.ok) {
-      return res.status(503).json({
-        error: "Subscription verification unavailable."
-      });
+      return res.status(503).json({ error: "Subscription verification unavailable." });
     }
 
     const rows = await response.json();
     const sub = rows[0];
 
-    const valid =
-      sub?.status === "active" &&
+    const valid = sub?.status === "active" &&
       sub.current_period_end &&
       new Date(sub.current_period_end) > new Date();
 
-    if (!valid) {
-      return res.status(403).json({
-        error: "An active subscription is required."
-      });
-    }
+    if (!valid) return res.status(403).json({ error: "An active subscription is required." });
 
     next();
   } catch (error) {
@@ -112,7 +87,6 @@ async function requireSubscription(req, res, next) {
   }
 }
 
-// Paddle plans
 const PADDLE_PRICES = {
   starter: "pri_01m7w1jr9hr6bp5pbr63mvpnem",
   pro: "pri_01m7w1mykq0zezf35s739fsd31",
@@ -121,31 +95,19 @@ const PADDLE_PRICES = {
 
 function getPlan(data) {
   const customPlan = data?.custom_data?.plan;
-
-  if (["starter", "pro", "enterprise"].includes(customPlan)) {
-    return customPlan;
-  }
+  if (["starter", "pro", "enterprise"].includes(customPlan)) return customPlan;
 
   const priceId = data?.items?.[0]?.price?.id;
-
-  return Object.keys(PADDLE_PRICES).find(
-    plan => PADDLE_PRICES[plan] === priceId
-  );
+  return Object.keys(PADDLE_PRICES).find(plan => PADDLE_PRICES[plan] === priceId);
 }
 
-// Create Paddle checkout
 app.post("/api/checkout", requireAuth, async (req, res) => {
   try {
     const plan = req.body?.plan;
     const priceId = PADDLE_PRICES[plan];
 
-    if (!priceId) {
-      return res.status(400).json({ error: "Invalid plan." });
-    }
-
-    if (!process.env.PADDLE_API_KEY) {
-      return res.status(500).json({ error: "Paddle API key missing." });
-    }
+    if (!priceId) return res.status(400).json({ error: "Invalid plan." });
+    if (!process.env.PADDLE_API_KEY) return res.status(500).json({ error: "Paddle API key missing." });
 
     const response = await fetch("https://api.paddle.com/transactions", {
       method: "POST",
@@ -156,10 +118,7 @@ app.post("/api/checkout", requireAuth, async (req, res) => {
       body: JSON.stringify({
         items: [{ price_id: priceId, quantity: 1 }],
         collection_mode: "automatic",
-        custom_data: {
-          user_id: req.user.id,
-          plan
-        }
+        custom_data: { user_id: req.user.id, plan }
       })
     });
 
@@ -171,46 +130,36 @@ app.post("/api/checkout", requireAuth, async (req, res) => {
     }
 
     const checkoutUrl = result.data?.checkout?.url;
-
     if (!checkoutUrl) {
-      return res.status(502).json({
-        error: "Paddle did not return a checkout link."
-      });
+      console.error("Paddle response missing checkout URL:", result);
+      return res.status(502).json({ error: "Paddle did not return a checkout link." });
     }
 
-    res.json({ checkoutUrl });
+    res.json({ checkoutUrl, checkout_url: checkoutUrl, url: checkoutUrl });
   } catch (error) {
     console.error("Checkout error:", error);
     res.status(500).json({ error: "Checkout creation failed." });
   }
 });
 
-// ReplyPilot AI chat
 app.post("/api/chat", requireAuth, requireSubscription, async (req, res) => {
   try {
-    if (!process.env.OPENAI_API_KEY) {
-      return res.status(500).json({ error: "AI API key missing." });
-    }
+    if (!process.env.OPENAI_API_KEY) return res.status(500).json({ error: "AI API key missing." });
 
     const history = req.body?.history;
-
     if (!Array.isArray(history) || history.length === 0) {
       return res.status(400).json({ error: "Please enter a message." });
     }
 
     const customerMessage = history.map(item => {
-      const content =
-        typeof item.content === "string"
-          ? item.content
-          : (item.parts || []).map(part => part.text || "").join("");
-
+      const content = typeof item.content === "string"
+        ? item.content
+        : (item.parts || []).map(part => part.text || "").join("");
       const role = item.role === "assistant" ? "Assistant" : "Customer";
       return `${role}: ${content}`;
     }).join("\n");
 
-    if (!customerMessage.trim()) {
-      return res.status(400).json({ error: "Empty message." });
-    }
+    if (!customerMessage.trim()) return res.status(400).json({ error: "Empty message." });
 
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
@@ -220,19 +169,15 @@ app.post("/api/chat", requireAuth, requireSubscription, async (req, res) => {
       },
       body: JSON.stringify({
         model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
-        instructions:
-          "You are ReplyPilot AI, a professional customer support assistant. Write clear, natural replies. Never invent prices, stock availability, or delivery details. Be honest that you are an AI assistant.",
+        instructions: "You are ReplyPilot AI, a professional customer support assistant. Write clear, natural replies. Never invent prices, stock availability, or delivery details. Be honest that you are an AI assistant.",
         input: customerMessage
       })
     });
 
     const data = await response.json();
-
     if (!response.ok) {
       console.error("AI API error:", data);
-      return res.status(502).json({
-        error: data.error?.message || "AI request failed."
-      });
+      return res.status(502).json({ error: data.error?.message || "AI request failed." });
     }
 
     const reply = (data.output || [])
@@ -241,10 +186,7 @@ app.post("/api/chat", requireAuth, requireSubscription, async (req, res) => {
       .map(item => item.text)
       .join("\n");
 
-    if (!reply) {
-      return res.status(502).json({ error: "No AI reply returned." });
-    }
-
+    if (!reply) return res.status(502).json({ error: "No AI reply returned." });
     res.json({ reply });
   } catch (error) {
     console.error("Chat error:", error);
@@ -252,81 +194,54 @@ app.post("/api/chat", requireAuth, requireSubscription, async (req, res) => {
   }
 });
 
-// WhatsApp verification
 app.get("/webhook", (req, res) => {
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
   const challenge = req.query["hub.challenge"];
 
-  if (
-    mode === "subscribe" &&
-    token &&
-    token === process.env.WHATSAPP_VERIFY_TOKEN
-  ) {
+  if (mode === "subscribe" && token && token === process.env.WHATSAPP_VERIFY_TOKEN) {
     return res.status(200).send(challenge);
   }
-
   res.sendStatus(403);
 });
 
-// Receive WhatsApp events
 app.post("/webhook", (req, res) => {
   const secret = process.env.META_APP_SECRET;
   const signature = req.get("X-Hub-Signature-256");
 
-  if (!secret || !signature || !req.rawBody) {
-    return res.sendStatus(401);
-  }
+  if (!secret || !signature || !req.rawBody) return res.sendStatus(401);
 
-  const expected =
-    "sha256=" +
-    crypto.createHmac("sha256", secret)
-      .update(req.rawBody)
-      .digest("hex");
-
+  const expected = "sha256=" + crypto.createHmac("sha256", secret).update(req.rawBody).digest("hex");
   const a = Buffer.from(signature);
   const b = Buffer.from(expected);
 
-  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
-    return res.sendStatus(401);
-  }
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return res.sendStatus(401);
 
   console.log("WhatsApp webhook event received.");
   res.sendStatus(200);
 });
 
-// Paddle webhook
 app.post("/api/paddle/webhook", async (req, res) => {
   try {
     const secret = process.env.PADDLE_WEBHOOK_SECRET;
     const header = req.get("Paddle-Signature");
 
-    if (!secret || !header || !req.rawBody) {
-      return res.sendStatus(401);
-    }
+    if (!secret || !header || !req.rawBody) return res.sendStatus(401);
 
-    const parts = Object.fromEntries(
-      header.split(";").map(part => {
-        const index = part.indexOf("=");
-        return [part.slice(0, index), part.slice(index + 1)];
-      })
-    );
+    const parts = Object.fromEntries(header.split(";").map(part => {
+      const index = part.indexOf("=");
+      return [part.slice(0, index), part.slice(index + 1)];
+    }));
 
-    if (!parts.ts || !parts.h1) {
-      return res.sendStatus(401);
-    }
+    if (!parts.ts || !parts.h1) return res.sendStatus(401);
 
-    const expected = crypto
-      .createHmac("sha256", secret)
-      .update(`${parts.ts}:${req.rawBody}`)
-      .digest("hex");
+    const expected = crypto.createHmac("sha256", secret)
+      .update(`${parts.ts}:${req.rawBody}`).digest("hex");
 
     const a = Buffer.from(parts.h1, "hex");
     const b = Buffer.from(expected, "hex");
 
-    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
-      return res.sendStatus(401);
-    }
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return res.sendStatus(401);
 
     const eventType = req.body?.event_type;
     const data = req.body?.data;
@@ -349,21 +264,11 @@ app.post("/api/paddle/webhook", async (req, res) => {
       Authorization: `Bearer ${supabaseKey}`
     };
 
-    if (
-      eventType === "subscription.activated" ||
-      eventType === "subscription.updated"
-    ) {
-      if (!userId || !plan || !subscriptionId) {
-        console.error("Missing subscription information.");
-        return res.sendStatus(400);
-      }
+    if (eventType === "subscription.activated" || eventType === "subscription.updated") {
+      if (!userId || !plan || !subscriptionId) return res.sendStatus(400);
 
       const periodEnd = data?.current_billing_period?.ends_at;
-
-      if (!periodEnd) {
-        console.error("Missing billing period end.");
-        return res.sendStatus(400);
-      }
+      if (!periodEnd) return res.sendStatus(400);
 
       const lookup = await fetch(
         `${supabaseUrl}/rest/v1/subscriptions?provider_subscription_id=eq.${encodeURIComponent(subscriptionId)}&select=id&limit=1`,
@@ -376,7 +281,6 @@ app.post("/api/paddle/webhook", async (req, res) => {
       }
 
       const existing = (await lookup.json())[0];
-
       const record = {
         user_id: userId,
         plan,
@@ -402,15 +306,9 @@ app.post("/api/paddle/webhook", async (req, res) => {
       }
     }
 
-    if (
-      eventType === "subscription.canceled" ||
-      eventType === "subscription.paused"
-    ) {
+    if (eventType === "subscription.canceled" || eventType === "subscription.paused") {
       if (subscriptionId) {
-        const status = eventType === "subscription.canceled"
-          ? "canceled"
-          : "paused";
-
+        const status = eventType === "subscription.canceled" ? "canceled" : "paused";
         const update = await fetch(
           `${supabaseUrl}/rest/v1/subscriptions?provider_subscription_id=eq.${encodeURIComponent(subscriptionId)}`,
           {
@@ -435,14 +333,11 @@ app.post("/api/paddle/webhook", async (req, res) => {
   }
 });
 
-// Public chat disabled
 app.post("/api/public-chat", (req, res) => {
-  res.status(403).json({
-    error: "Public chat is not enabled yet."
-  });
+  res.status(403).json({ error: "Public chat is not enabled yet." });
 });
 
-// Start server
 app.listen(PORT, () => {
   console.log(`ReplyPilot AI running on port ${PORT}`);
 });
+          

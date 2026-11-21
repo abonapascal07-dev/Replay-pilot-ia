@@ -162,7 +162,7 @@ app.get("/privacy.html", (req, res) => {
 app.get("/refund.html", (req, res) => {
   res.sendFile(path.join(__dirname, "refund.html"));
 });
-
+app.get("/health", (req, res) => {
   res.json({ status: "ok", service: "ReplyPilot AI" });
 });
 

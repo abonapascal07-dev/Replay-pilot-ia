@@ -1,8 +1,335 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ReplyPilot AI</title>
+<style>
+body{font-family:Arial,sans-serif;background:#f4f6fb;margin:0;color:#1d2433}
+header{background:#fff;padding:16px;border-bottom:1px solid #e3e7ef}
+main{max-width:720px;margin:0 auto;padding:16px}
+.card{background:#fff;border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+label{display:block;margin-top:10px;font-weight:bold;font-size:14px}
+input,select,textarea{width:100%;box-sizing:border-box;padding:10px;margin-top:4px;border:1px solid #cfd6e4;border-radius:8px;font-size:15px}
+textarea{min-height:90px}
+button{padding:12px 16px;border:none;border-radius:8px;font-size:15px;cursor:pointer;margin-top:10px}
+button:disabled{opacity:.5;cursor:default}
+.primary{background:#1f6feb;color:#fff}
+.dark{background:#1d2433;color:#fff}
+.secondary{background:#e7edf9;color:#1f3a7a}
+.light{background:#f0f2f6;color:#1d2433}
+.full{width:100%}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.status{font-size:14px;margin-top:8px;color:#444}
+.hint,.desc{color:#666;font-size:14px}
+.chat{max-height:360px;overflow-y:auto;background:#f7f9fc;border-radius:8px;padding:10px;margin-top:10px}
+.bubble{padding:10px;border-radius:10px;margin:8px 0;white-space:pre-wrap}
+.bubble.customer{background:#fff;border:1px solid #e0e5ee}
+.bubble.assistant{background:#e6f0ff}
+.who{font-size:12px;font-weight:bold;color:#667;margin-bottom:4px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.actions button{flex:1}
+footer{text-align:center;font-size:13px;color:#667;padding:20px}
+footer a{color:#1f6feb;margin:0 6px}
+.hidden{display:none}
+</style>
+</head>
+<body>
+
+<header><strong>ReplyPilot AI</strong></header>
+
+<main>
+
+<!-- ===== Connexion / inscription ===== -->
+<section class="card" id="authSection">
+  <h2>Welcome to ReplyPilot AI</h2>
+  <p class="desc">Create your account or sign in to continue.</p>
+  <label for="authEmail">Email address</label>
+  <input id="authEmail" type="email" autocomplete="email" placeholder="you@example.com">
+  <label for="authPassword">Password</label>
+  <input id="authPassword" type="password" autocomplete="current-password" minlength="6" placeholder="At least 6 characters">
+  <button id="signUpBtn" class="primary full" type="button">Create account</button>
+  <button id="signInBtn" class="dark full" type="button">Sign in</button>
+  <div id="authStatus" class="status" aria-live="polite"></div>
+</section>
+
+<!-- ===== Application (visible après connexion) ===== -->
+<div id="app" class="hidden">
+
+  <section class="card">
+    <h1>Your AI Support Assistant</h1>
+    <p class="desc">Draft professional customer support replies while keeping the conversation context.</p>
+    <button id="waBtn" class="primary full" type="button">Connecter WhatsApp</button>
+    <div id="waStatus" class="status" aria-live="polite"></div>
+
+    <div class="grid">
+      <div>
+        <label for="businessName">Business name</label>
+        <input id="businessName" placeholder="Example: Pascal Shoes">
+      </div>
+      <div>
+        <label for="businessType">Business type</label>
+        <input id="businessType" placeholder="Example: Online shoe store">
+      </div>
+    </div>
+    <label for="tone">Reply tone</label>
+    <select id="tone">
+      <option>Professional</option>
+      <option>Friendly</option>
+      <option>Formal</option>
+    </select>
+  </section>
+
+  <section class="card">
+    <h2>Customer Conversation</h2>
+    <p class="desc">Paste each new customer message below. ReplyPilot remembers this conversation until you reset or leave the page.</p>
+    <div id="chat" class="chat" aria-live="polite">
+      <p class="hint" id="emptyHint">No messages yet. Paste a customer's message to start.</p>
+    </div>
+    <label for="message">Customer message</label>
+    <textarea id="message" placeholder="Paste the customer's latest message here..."></textarea>
+    <button id="generateButton" class="primary full" type="button">Generate Reply</button>
+    <div class="actions">
+      <button id="copyButton" class="light" type="button" disabled>Copy Last Reply</button>
+      <button id="newButton" class="secondary" type="button">New Conversation</button>
+    </div>
+    <div id="status" class="status" aria-live="polite"></div>
+    <p class="hint">This is a drafting assistant. Copy the AI reply to send it to your customer. It does not automatically send messages or access order records.</p>
+    <button id="signOutBtn" class="dark full" type="button">Sign out</button>
+  </section>
+
+</div>
+
+</main>
+
+<footer>
+  <a href="terms.html">Terms</a>
+  <a href="privacy.html">Privacy</a>
+  <a href="refund.html">Refund Policy</a>
+</footer>
 
 <div id="fb-root"></div>
+
+<!-- Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = "https://zsrkyikjyrfxbdkipnhu.supabase.co";
+const SUPABASE_ANON_KEY = "REMPLACER_PAR_VOTRE_CLE_ANON";
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const $ = (id) => document.getElementById(id);
+let activeUserId = null;
+let conversationHistory = [];
+let lastReply = "";
+
+// ----- Affichage -----
+function showApp(show, userId) {
+  $("authSection").classList.toggle("hidden", show);
+  $("app").classList.toggle("hidden", !show);
+  activeUserId = show ? userId : null;
+  if (!show) {
+    $("businessName").value = "";
+    $("businessType").value = "";
+    clearConversation();
+  }
+}
+
+// ----- Inscription / connexion / déconnexion -----
+$("signUpBtn").addEventListener("click", async () => {
+  const email = $("authEmail").value.trim();
+  const password = $("authPassword").value;
+  if (!email || password.length < 6) {
+    $("authStatus").textContent = "Enter a valid email and a password of at least 6 characters.";
+    return;
+  }
+  $("authStatus").textContent = "Creating account...";
+  const { error } = await supabaseClient.auth.signUp({ email, password });
+  $("authStatus").textContent = error
+    ? error.message
+    : "Account created! Check your email, then sign in.";
+});
+
+$("signInBtn").addEventListener("click", async () => {
+  const email = $("authEmail").value.trim();
+  const password = $("authPassword").value;
+  if (!email || !password) {
+    $("authStatus").textContent = "Enter your email and password.";
+    return;
+  }
+  $("authStatus").textContent = "Signing in...";
+  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  $("authStatus").textContent = error ? error.message : "Signed in successfully.";
+});
+
+$("signOutBtn").addEventListener("click", async () => {
+  const { error } = await supabaseClient.auth.signOut();
+  if (error) $("status").textContent = error.message;
+});
+
+supabaseClient.auth.onAuthStateChange((event, session) => {
+  showApp(!!session, session?.user?.id || null);
+  if (session && event === "SIGNED_IN") setTimeout(loadBusinessProfile, 0);
+});
+
+supabaseClient.auth.getSession().then(({ data, error }) => {
+  if (error) $("authStatus").textContent = error.message;
+  showApp(!!data.session, data.session?.user?.id || null);
+  if (data.session) loadBusinessProfile();
+});
+
+// ----- Profil de la boutique -----
+async function loadBusinessProfile() {
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  if (!user) return;
+  const { data, error } = await supabaseClient
+    .from("business_profiles")
+    .select("business_name,business_type")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (error) {
+    console.error("Load profile:", error.message);
+    return;
+  }
+  $("businessName").value = data?.business_name || "";
+  $("businessType").value = data?.business_type || "";
+}
+
+async function saveBusinessProfile() {
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  if (!user) return;
+  const profile = {
+    user_id: user.id,
+    business_name: $("businessName").value.trim(),
+    business_type: $("businessType").value.trim()
+  };
+  const { data: existing, error: lookupError } = await supabaseClient
+    .from("business_profiles")
+    .select("id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (lookupError) {
+    $("status").textContent = "Profile error: " + lookupError.message;
+    return;
+  }
+  const query = existing
+    ? supabaseClient.from("business_profiles").update(profile).eq("id", existing.id)
+    : supabaseClient.from("business_profiles").insert(profile);
+  const { error } = await query;
+  $("status").textContent = error ? "Profile error: " + error.message : "Profile saved.";
+}
+
+$("businessName").addEventListener("change", saveBusinessProfile);
+$("businessType").addEventListener("change", saveBusinessProfile);
+
+// ----- Conversation -----
+function addBubble(role, text) {
+  const hint = $("emptyHint");
+  if (hint) hint.remove();
+  const div = document.createElement("div");
+  div.className = "bubble " + (role === "assistant" ? "assistant" : "customer");
+  const who = document.createElement("div");
+  who.className = "who";
+  who.textContent = role === "assistant" ? "ReplyPilot AI · Draft reply" : "Customer";
+  const content = document.createElement("div");
+  content.textContent = text;
+  div.append(who, content);
+  $("chat").append(div);
+  $("chat").scrollTop = $("chat").scrollHeight;
+}
+
+function clearConversation() {
+  conversationHistory = [];
+  lastReply = "";
+  $("chat").replaceChildren();
+  const p = document.createElement("p");
+  p.className = "hint";
+  p.id = "emptyHint";
+  p.textContent = "No messages yet. Paste a customer's message to start.";
+  $("chat").append(p);
+  $("copyButton").disabled = true;
+  $("message").value = "";
+  $("status").textContent = "New conversation started.";
+}
+
+$("generateButton").addEventListener("click", async () => {
+  const customerMessage = $("message").value.trim();
+  if (!customerMessage) {
+    $("status").textContent = "Please enter a customer message.";
+    return;
+  }
+
+  const businessName = $("businessName").value.trim() || "Not provided";
+  const businessType = $("businessType").value.trim() || "Not provided";
+  const tone = $("tone").value;
+  const prompt =
+    "Business name: " + businessName + "\n" +
+    "Business type: " + businessType + "\n" +
+    "Reply tone: " + tone + "\n" +
+    "Customer message: " + customerMessage + "\n" +
+    "Write a helpful, professional reply to the customer.";
+
+  $("generateButton").disabled = true;
+  $("generateButton").textContent = "Generating...";
+  $("status").textContent = "Generating reply...";
+
+  try {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    const response = await fetch("/api/reply", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + (session?.access_token || "")
+      },
+      body: JSON.stringify({ prompt: prompt, history: conversationHistory })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "The request failed.");
+    if (typeof data.reply !== "string" || !data.reply.trim()) {
+      throw new Error("No reply was returned.");
+    }
+
+    conversationHistory.push(
+      { role: "user", parts: [{ text: prompt }] },
+      { role: "assistant", parts: [{ text: data.reply }] }
+    );
+    if (conversationHistory.length > 20) {
+      conversationHistory = conversationHistory.slice(-20);
+    }
+
+    addBubble("user", customerMessage);
+    addBubble("assistant", data.reply);
+    lastReply = data.reply;
+    $("copyButton").disabled = false;
+    $("message").value = "";
+    $("status").textContent = "Reply generated successfully!";
+  } catch (error) {
+    $("status").textContent = "Error: " + error.message;
+  } finally {
+    $("generateButton").disabled = false;
+    $("generateButton").textContent = "Generate Reply";
+  }
+});
+
+$("copyButton").addEventListener("click", async () => {
+  if (!lastReply) return;
+  try {
+    await navigator.clipboard.writeText(lastReply);
+    $("status").textContent = "Reply copied successfully!";
+  } catch {
+    $("status").textContent = "Copy failed. Select and copy the reply manually.";
+  }
+});
+
+$("newButton").addEventListener("click", () => {
+  if (conversationHistory.length && !confirm("Start a new conversation? The current conversation will be cleared.")) return;
+  clearConversation();
+});
+</script>
+
+<!-- WhatsApp Embedded Signup -->
 <script>
 const META_APP_ID = "1483751340345736";
-const META_CONFIG_ID = "1498676108792714";
+const META_CONFIG_ID = "1178146298233947";
 
 let metaSdkReady = false;
 let activeSignup = null;
@@ -29,7 +356,6 @@ window.fbAsyncInit = function () {
 
 function completeWhatsAppSignup() {
   if (!activeSignup || activeSignup.done) return;
-
   const signup = activeSignup;
   if (!signup.code || !signup.wabaId || !signup.phoneNumberId) return;
 
@@ -41,9 +367,7 @@ function completeWhatsAppSignup() {
 
   (async function () {
     try {
-      const { data: { session }, error } =
-        await supabaseClient.auth.getSession();
-
+      const { data: { session }, error } = await supabaseClient.auth.getSession();
       if (error || !session) {
         throw new Error("Veuillez vous reconnecter à votre compte ReplyPilot.");
       }
@@ -62,15 +386,12 @@ function completeWhatsAppSignup() {
       });
 
       const result = await response.json();
-
       if (!response.ok) {
         throw new Error(result.error || "La connexion WhatsApp a échoué.");
       }
 
-      status.textContent =
-        "WhatsApp connecté : " +
+      status.textContent = "WhatsApp connecté : " +
         (result.connection?.phone_number || "Compte connecté");
-
     } catch (error) {
       console.error("WhatsApp connection error:", error);
       status.textContent = "Erreur : " + error.message;
@@ -82,23 +403,16 @@ function completeWhatsAppSignup() {
 
 window.addEventListener("message", function (event) {
   let hostname;
-
   try {
     hostname = new URL(event.origin).hostname;
   } catch {
     return;
   }
-
-  if (hostname !== "facebook.com" && !hostname.endsWith(".facebook.com")) {
-    return;
-  }
+  if (hostname !== "facebook.com" && !hostname.endsWith(".facebook.com")) return;
 
   let data;
-
   try {
-    data = typeof event.data === "string"
-      ? JSON.parse(event.data)
-      : event.data;
+    data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
   } catch {
     return;
   }
@@ -107,13 +421,8 @@ window.addEventListener("message", function (event) {
   if (!activeSignup) return;
 
   const payload = data.data || data;
-
-  activeSignup.wabaId =
-    payload.waba_id || payload.wabaId || null;
-
-  activeSignup.phoneNumberId =
-    payload.phone_number_id || payload.phoneNumberId || null;
-
+  activeSignup.wabaId = payload.waba_id || payload.wabaId || null;
+  activeSignup.phoneNumberId = payload.phone_number_id || payload.phoneNumberId || null;
   completeWhatsAppSignup();
 });
 
@@ -121,34 +430,22 @@ document.getElementById("waBtn").addEventListener("click", function () {
   const status = document.getElementById("waStatus");
 
   if (!metaSdkReady || !window.FB) {
-    status.textContent =
-      "Meta est encore en chargement. Réessayez dans quelques secondes.";
+    status.textContent = "Meta est encore en chargement. Réessayez dans quelques secondes.";
     return;
   }
-
   if (activeSignup) {
     status.textContent = "Une connexion WhatsApp est déjà en cours.";
     return;
   }
 
-  activeSignup = {
-    code: null,
-    wabaId: null,
-    phoneNumberId: null,
-    done: false,
-    timer: null
-  };
-
+  activeSignup = { code: null, wabaId: null, phoneNumberId: null, done: false, timer: null };
   const signup = activeSignup;
-
   status.textContent = "Ouverture de la connexion Meta...";
 
   signup.timer = setTimeout(function () {
     if (activeSignup !== signup) return;
-
     activeSignup = null;
-    status.textContent =
-      "Délai dépassé. Réessayez la connexion WhatsApp.";
+    status.textContent = "Délai dépassé. Réessayez la connexion WhatsApp.";
   }, 120000);
 
   FB.login(function (response) {
@@ -156,23 +453,21 @@ document.getElementById("waBtn").addEventListener("click", function () {
 
     if (response && response.authResponse && response.authResponse.code) {
       signup.code = response.authResponse.code;
-      status.textContent =
-        "Autorisation reçue. Finalisation de la connexion...";
+      status.textContent = "Autorisation reçue. Finalisation de la connexion...";
       completeWhatsAppSignup();
     } else {
       clearTimeout(signup.timer);
       activeSignup = null;
-      status.textContent =
-        "Connexion Meta annulée ou code d'autorisation absent.";
+      status.textContent = "Connexion Meta annulée ou code d'autorisation absent.";
     }
   }, {
     config_id: META_CONFIG_ID,
     response_type: "code",
     override_default_response_type: true,
-    extras: {
-      setup: {},
-      sessionInfoVersion: "3"
-    }
+    extras: { setup: {}, sessionInfoVersion: "3" }
   });
 });
 </script>
+
+</body>
+</html>

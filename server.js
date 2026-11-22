@@ -1,3 +1,4 @@
+
 const express = require("express");
 const path = require("path");
 const crypto = require("crypto");
@@ -14,14 +15,43 @@ const SUPABASE_KEY =
 
 const PADDLE_API_KEY = process.env.PADDLE_API_KEY;
 const PADDLE_ENV = process.env.PADDLE_ENV || "production";
-
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
+const META_GRAPH_VERSION =
+  process.env.META_GRAPH_VERSION || "v21.0";
 
 const PLANS = {
   starter: "pri_01m7w1jr9hr6bp5pbr63mvpnem",
   pro: "pri_01m7yspafm8vk7fpyjjr5nv3dg",
   enterprise: "pri_01m7w1pwtfn424ymzbm99dedjv"
 };
+
+// Encrypt WhatsApp access tokens
+function encryptToken(token) {
+  const keyHex = process.env.TOKEN_ENCRYPTION_KEY;
+
+  if (!keyHex || !/^[0-9a-fA-F]{64}$/.test(keyHex)) {
+    throw new Error("TOKEN_ENCRYPTION_KEY must contain 64 hexadecimal characters.");
+  }
+
+  const key = Buffer.from(keyHex, "hex");
+  const iv = crypto.randomBytes(12);
+
+  const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+  const encrypted = Buffer.concat([
+    cipher.update(token, "utf8"),
+    cipher.final()
+  ]);
+
+  const tag = cipher.getAuthTag();
+
+  return [
+    "v1",
+    iv.toString("hex"),
+    tag.toString("hex"),
+    encrypted.toString("hex")
+  ].join(":");
+}
 
 // Paddle webhook
 app.post(
@@ -73,7 +103,6 @@ app.post(
 
       console.log("Verified Paddle event:", event.event_type);
 
-      const eventType = event.event_type;
       const data = event.data || {};
       const userId = data.custom_data?.supabase_user_id;
       const plan = data.custom_data?.plan || null;
@@ -237,6 +266,209 @@ async function requireAuth(req, res, next) {
     });
   }
 }
+
+// Connect a customer's WhatsApp account
+app.post("/api/whatsapp/connect", requireAuth, async (req, res) => {
+  try {
+    const appId = process.env.META_APP_ID;
+    const appSecret = process.env.META_APP_SECRET;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    const code = req.body.code;
+    const wabaId = String(req.body.waba_id || "");
+    const phoneNumberId = String(req.body.phone_number_id || "");
+
+    if (!appId || !appSecret || !serviceKey) {
+      return res.status(500).json({
+        error: "Meta or Supabase server configuration is missing."
+      });
+    }
+
+    if (!code || !wabaId || !phoneNumberId) {
+      return res.status(400).json({
+        error: "Missing WhatsApp authorization information."
+      });
+    }
+
+    // Exchange the temporary authorization code for an access token
+    const exchangeUrl = new URL(
+      `https://graph.facebook.com/${META_GRAPH_VERSION}/oauth/access_token`
+    );
+
+    exchangeUrl.searchParams.set("client_id", appId);
+    exchangeUrl.searchParams.set("client_secret", appSecret);
+    exchangeUrl.searchParams.set("code", code);
+
+    const tokenResponse = await fetch(exchangeUrl);
+
+    const tokenData = await tokenResponse.json();
+
+    if (!tokenResponse.ok || !tokenData.access_token) {
+      console.error("Meta token exchange failed:", tokenData);
+
+      return res.status(502).json({
+        error: "Meta could not authorize this WhatsApp account."
+      });
+    }
+
+    const accessToken = tokenData.access_token;
+
+    // Retrieve the connected WhatsApp phone details
+    const phoneUrl = new URL(
+      `https://graph.facebook.com/${META_GRAPH_VERSION}/${encodeURIComponent(phoneNumberId)}`
+    );
+
+    phoneUrl.searchParams.set(
+      "fields",
+      "display_phone_number,verified_name"
+    );
+
+    const phoneResponse = await fetch(phoneUrl, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    });
+
+    const phoneData = await phoneResponse.json();
+
+    if (!phoneResponse.ok) {
+      console.error("Meta phone lookup failed:", phoneData);
+
+      return res.status(502).json({
+        error: "Could not retrieve the WhatsApp phone details."
+      });
+    }
+
+    // Subscribe this WhatsApp Business Account to the app
+    const subscribeResponse = await fetch(
+      `https://graph.facebook.com/${META_GRAPH_VERSION}/${encodeURIComponent(wabaId)}/subscribed_apps`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      }
+    );
+
+    const subscribeData = await subscribeResponse.json();
+
+    if (!subscribeResponse.ok) {
+      console.error("Meta WABA subscription failed:", subscribeData);
+
+      return res.status(502).json({
+        error: "WhatsApp authorization succeeded, but webhook subscription failed. Check Meta permissions."
+      });
+    }
+
+    // Encrypt the token before saving it
+    const encryptedToken = encryptToken(accessToken);
+
+    const dbHeaders = {
+      apikey: serviceKey,
+      Authorization: `Bearer ${serviceKey}`,
+      "Content-Type": "application/json"
+    };
+
+    const connection = {
+      user_id: req.user.id,
+      waba_id: wabaId,
+      phone_number_id: phoneNumberId,
+      phone_number: phoneData.display_phone_number || "",
+      business_name: phoneData.verified_name || "",
+      access_token_encrypted: encryptedToken,
+      status: "connected"
+    };
+
+    // Check whether this user already connected this WABA
+    const lookupUrl = new URL(
+      `${SUPABASE_URL}/rest/v1/whatsapp_connections`
+    );
+
+    lookupUrl.searchParams.set("select", "id");
+    lookupUrl.searchParams.set("user_id", `eq.${req.user.id}`);
+    lookupUrl.searchParams.set("waba_id", `eq.${wabaId}`);
+
+    const lookupResponse = await fetch(lookupUrl, {
+      headers: dbHeaders
+    });
+
+    if (!lookupResponse.ok) {
+      console.error(
+        "Supabase connection lookup failed:",
+        await lookupResponse.text()
+      );
+
+      return res.status(502).json({
+        error: "Could not check the WhatsApp connection in the database."
+      });
+    }
+
+    const existingRows = await lookupResponse.json();
+
+    let saveResponse;
+
+    if (Array.isArray(existingRows) && existingRows.length > 0) {
+      const updateUrl = new URL(
+        `${SUPABASE_URL}/rest/v1/whatsapp_connections`
+      );
+
+      updateUrl.searchParams.set("user_id", `eq.${req.user.id}`);
+      updateUrl.searchParams.set("waba_id", `eq.${wabaId}`);
+
+      saveResponse = await fetch(updateUrl, {
+        method: "PATCH",
+        headers: {
+          ...dbHeaders,
+          Prefer: "return=minimal"
+        },
+        body: JSON.stringify(connection)
+      });
+    } else {
+      saveResponse = await fetch(
+        `${SUPABASE_URL}/rest/v1/whatsapp_connections`,
+        {
+          method: "POST",
+          headers: {
+            ...dbHeaders,
+            Prefer: "return=minimal"
+          },
+          body: JSON.stringify(connection)
+        }
+      );
+    }
+
+    if (!saveResponse.ok) {
+      console.error(
+        "Supabase WhatsApp save failed:",
+        await saveResponse.text()
+      );
+
+      return res.status(502).json({
+        error: "WhatsApp was authorized, but saving the connection failed."
+      });
+    }
+
+    console.log("WhatsApp connected for user:", req.user.id);
+
+    return res.json({
+      success: true,
+      message: "WhatsApp account connected successfully.",
+      connection: {
+        phone_number: connection.phone_number,
+        business_name: connection.business_name,
+        phone_number_id: phoneNumberId,
+        status: "connected"
+      }
+    });
+
+  } catch (error) {
+    console.error("WhatsApp connection error:", error.message);
+
+    return res.status(500).json({
+      error: "WhatsApp connection failed. Please try again."
+    });
+  }
+});
 
 // Create Paddle checkout
 app.post("/api/checkout", requireAuth, async (req, res) => {

@@ -272,15 +272,15 @@ $("generateButton").addEventListener("click", async () => {
   $("generateButton").textContent = "Generating...";
   $("status").textContent = "Generating reply...";
 
-  try {
+      try {
     const { data: { session } } = await supabaseClient.auth.getSession();
-    const response = await fetch("/api/reply", {
+    const response = await fetch("/api/chat", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": "Bearer " + (session?.access_token || "")
       },
-      body: JSON.stringify({ prompt: prompt, history: conversationHistory })
+      body: JSON.stringify({ history: conversationHistory.concat([{ role: "user", parts: [{ text: prompt }] }]) })
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "The request failed.");
